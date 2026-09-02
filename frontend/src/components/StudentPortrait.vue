@@ -18,13 +18,15 @@
       </div>
 
       <div v-if="!loading" class="portrait-body">
-        <!-- 基本信息卡 -->
+        <!-- 基本信息卡（固定不滚） -->
         <div class="info-cards">
           <div class="info-card"><span>座位</span><b>{{ data?.seat || '未排' }}</b></div>
           <div class="info-card"><span>家长</span><b>{{ data?.student?.guardian || '—' }}</b></div>
           <div class="info-card"><span>电话</span><b>{{ data?.student?.phone || '—' }}</b></div>
         </div>
 
+        <!-- 下方内容：可滚动 -->
+        <div class="portrait-scroll">
         <!-- 近90天考勤 -->
         <h4>✅ 近 90 天出勤</h4>
         <div class="att-summary">
@@ -51,7 +53,8 @@
             :color="latestExam.my_total >= latestExam.class_avg ? '#34d399' : '#ff6f6f'"
           />
         </div>
-      </div>
+        </div><!-- /portrait-scroll -->
+      </div><!-- /portrait-body -->
       <div v-else class="loading-box">加载中…</div>
     </div>
   </n-modal>
@@ -165,8 +168,28 @@ const trendOption = computed(() => {
   border: 3px solid #fff;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
   box-sizing: border-box;
+  /* 固定头 + 仅下方滚动 */
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  max-height: min(90vh, 720px);
+  overflow: hidden;
 }
-.portrait-header { display: flex; align-items: center; gap: 12px; padding-right: 26px; }
+.portrait-header { display: flex; align-items: center; gap: 12px; padding-right: 26px; flex: 0 0 auto; }
+.portrait-body { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.portrait-body > .info-cards { flex: 0 0 auto; }
+.portrait-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-top: 2px;
+  /* 柔和滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: #d9c6b2 transparent;
+}
+.portrait-scroll::-webkit-scrollbar { width: 6px; }
+.portrait-scroll::-webkit-scrollbar-thumb { background: #d9c6b2; border-radius: 8px; }
 .portrait-close {
   position: absolute; top: 12px; right: 14px;
   width: 28px; height: 28px; border-radius: 50%;
