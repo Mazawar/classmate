@@ -159,6 +159,13 @@ const trendOption = computed(() => {
 </script>
 
 <style scoped>
+.portrait-card {
+  background: #fff;
+  border-radius: 22px;
+  border: 3px solid #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  box-sizing: border-box;
+}
 .portrait-header { display: flex; align-items: center; gap: 12px; padding-right: 26px; }
 .portrait-close {
   position: absolute; top: 12px; right: 14px;
