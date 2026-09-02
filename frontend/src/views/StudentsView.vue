@@ -72,6 +72,9 @@
           <n-form-item label="家长电话">
             <n-input v-model:value="form.phone" placeholder="联系电话" />
           </n-form-item>
+          <n-form-item label="备用电话">
+            <n-input v-model:value="form.guardian_phone2" placeholder="备用联系电话" />
+          </n-form-item>
         </div>
         <n-form-item label="家庭住址">
           <n-input v-model:value="form.address" placeholder="住址" />
@@ -118,7 +121,7 @@ const editing = ref(null)
 const birthTs = ref(null)
 const emptyForm = () => ({
   name: '', student_no: '', gender: null, class_id: null,
-  guardian: '', phone: '', address: '', remark: '',
+  guardian: '', phone: '', guardian_phone2: '', address: '', remark: '',
 })
 const form = reactive(emptyForm())
 
@@ -127,6 +130,8 @@ const columns = computed(() => [
   { title: '姓名', key: 'name', minWidth: 90 },
   { title: '性别', key: 'gender', minWidth: 60, render: (r) => (r.gender === 'M' ? '👦 男' : r.gender === 'F' ? '👧 女' : '—') },
   { title: '班级', key: 'class_name', minWidth: 100, render: (r) => r.class_name || '未分班' },
+  { title: '座位', key: 'seat', minWidth: 80, render: (r) => r.seat || '—' },
+  { title: '职务', key: 'cadre', minWidth: 80, render: (r) => r.cadre ? '⭐ ' + r.cadre : '—' },
   { title: '家长', key: 'guardian', minWidth: 90, ellipsis: true, render: (r) => r.guardian || '—' },
   { title: '联系电话', key: 'phone', minWidth: 130, render: (r) => r.phone || '—' },
   {
@@ -189,7 +194,7 @@ function openEdit(row) {
   editing.value = row
   Object.assign(form, {
     name: row.name, student_no: row.student_no, gender: row.gender,
-    class_id: row.class_id, guardian: row.guardian, phone: row.phone,
+    class_id: row.class_id, guardian: row.guardian, phone: row.phone, guardian_phone2: row.guardian_phone2,
     address: row.address, remark: row.remark,
   })
   birthTs.value = row.birth_date ? new Date(row.birth_date + 'T00:00:00').getTime() : null

@@ -11,16 +11,19 @@
       </div>
 
       <nav class="menu">
-        <div
-          v-for="item in navs"
-          :key="item.path"
-          class="menu-item"
-          :class="{ active: $route.path === item.path }"
-          @click="$router.push(item.path)"
-        >
-          <span class="menu-icon">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </div>
+        <template v-for="group in navGroups" :key="group.label">
+          <div v-if="group.label" class="menu-group">{{ group.label }}</div>
+          <div
+            v-for="item in group.items"
+            :key="item.path"
+            class="menu-item"
+            :class="{ active: isActive(item) }"
+            @click="$router.push(item.path)"
+          >
+            <span class="menu-icon">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+          </div>
+        </template>
       </nav>
 
       <div class="user-box">
@@ -41,17 +44,42 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
-const navs = [
-  { path: '/dashboard', label: '首页概览', icon: '🏠' },
-  { path: '/students', label: '学生管理', icon: '🧑‍🎓' },
-  { path: '/classes', label: '班级管理', icon: '🏫' },
+const navGroups = [
+  {
+    label: '',
+    items: [{ path: '/dashboard', label: '首页概览', icon: '🏠' }],
+  },
+  {
+    label: '班级管理',
+    items: [
+      { path: '/classes', label: '班级信息', icon: '🏫' },
+      { path: '/schedule', label: '课程表', icon: '📋' },
+      { path: '/seats', label: '座位表', icon: '💺' },
+      { path: '/cadres', label: '班干部', icon: '👔' },
+      { path: '/subjects', label: '科目管理', icon: '📚' },
+    ],
+  },
+  {
+    label: '学生数据',
+    items: [
+      { path: '/students', label: '学生档案', icon: '🧑‍🎓' },
+      { path: '/attendance', label: '考勤打卡', icon: '✅' },
+      { path: '/exams', label: '成绩管理', icon: '📈' },
+      { path: '/contacts', label: '家长通讯录', icon: '📞' },
+    ],
+  },
 ]
+
+function isActive(item) {
+  return route.path === item.path
+}
 
 const avatarChar = computed(() => {
   const name = auth.user?.nickname || auth.user?.username || '?'
@@ -115,13 +143,20 @@ function handleLogout() {
   flex: 1;
   margin-top: 8px;
 }
+.menu-group {
+  font-size: 11px;
+  color: #b39b86;
+  padding: 12px 16px 4px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
 .menu-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 13px 16px;
+  padding: 11px 16px;
   border-radius: 16px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   cursor: pointer;
   font-weight: 600;
   color: #6b5d50;
@@ -186,7 +221,7 @@ function handleLogout() {
     border-bottom: 3px solid #fff;
   }
   .logo { padding: 0; }
-  .logo-sub, .user-box, .menu-item:not(.active) { display: none; }
+  .logo-sub, .user-box, .menu-group, .menu-item:not(.active) { display: none; }
   .menu {
     display: flex;
     flex: 0;

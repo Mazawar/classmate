@@ -86,6 +86,22 @@ h1, h2, h3, h4 {
 ::-webkit-scrollbar-thumb { background: #d9c6b2; border-radius: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
+/* 考勤状态按钮（渲染函数生成，需全局） */
+.status-btn {
+  border: 2px solid #e3d8cc;
+  background: #fff;
+  color: #8a7a6b;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.12s;
+  line-height: 1.6;
+}
+.status-btn:hover { transform: scale(1.05); }
+
+
 /* 动画：弹入 */
 @keyframes popIn {
   0% { opacity: 0; transform: scale(0.92) translateY(12px); }

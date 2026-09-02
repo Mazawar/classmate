@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """学生档案 CRUD 接口。"""
+from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,9 +15,30 @@ from .auth import get_current_user
 router = APIRouter(prefix="/api/students", tags=["students"])
 
 
-def _to_out(s: models.Student) -> StudentOut:
+def _to_out(s: models.Student, db: Optional[Session] = None) -> StudentOut:
     out = StudentOut.model_validate(s)
     out.class_name = s.class_.name if s.class_ else None
+    if s.class_id and db is not None:
+        seat = (
+            db.query(models.Seat)
+            .filter(
+                models.Seat.class_id == s.class_id,
+                models.Seat.student_id == s.id,
+            )
+            .first()
+        )
+        if seat:
+            out.seat = f"{seat.row}排{seat.col}列"
+        cadre = (
+            db.query(models.ClassCadre)
+            .filter(
+                models.ClassCadre.class_id == s.class_id,
+                models.ClassCadre.student_id == s.id,
+            )
+            .first()
+        )
+        if cadre:
+            out.cadre = cadre.role
     return out
 
 
@@ -53,7 +75,7 @@ def list_students(
         .limit(per_page)
         .all()
     )
-    return PageResult(total=total, items=[_to_out(s) for s in items])
+    return PageResult(total=total, items=[_to_out(s, db) for s in items])
 
 
 @router.get("/stats", response_model=dict)
@@ -78,12 +100,27 @@ def student_stats(db: Session = Depends(get_db), _: models.User = Depends(get_cu
         .scalar()
         or 0
     )
+    subject_count = db.query(func.count(models.Subject.id)).scalar() or 0
+    cadre_count = db.query(func.count(models.ClassCadre.id)).scalar() or 0
+    exam_count = db.query(func.count(models.Exam.id)).scalar() or 0
+    # 今日考勤
+    today = date.today()
+    att_today = (
+        db.query(func.count(models.Attendance.id))
+        .filter(models.Attendance.date == today)
+        .scalar()
+        or 0
+    )
     return {
         "total_students": total,
         "male": male,
         "female": female,
         "not_in_class": not_in_class,
         "total_classes": class_count,
+        "total_subjects": subject_count,
+        "total_cadres": cadre_count,
+        "total_exams": exam_count,
+        "attendance_today": att_today,
     }
 
 
@@ -99,7 +136,7 @@ def create_student(
     db.refresh(student)
     if student.class_id:
         db.refresh(student.class_)
-    return _to_out(student)
+    return _to_out(student, db)
 
 
 @router.get("/{student_id}", response_model=StudentOut)
@@ -116,7 +153,7 @@ def get_student(
     )
     if not student:
         raise HTTPException(status_code=404, detail="学生不存在")
-    return _to_out(student)
+    return _to_out(student, db)
 
 
 @router.put("/{student_id}", response_model=StudentOut)
@@ -136,7 +173,7 @@ def update_student(
     db.refresh(student)
     if student.class_id:
         db.refresh(student.class_)
-    return _to_out(student)
+    return _to_out(student, db)
 
 
 @router.delete("/{student_id}", response_model=dict)

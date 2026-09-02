@@ -17,6 +17,15 @@ import {
   NDatePicker,
   NIcon,
   NEmpty,
+  NInputNumber,
+  NColorPicker,
+  NTag,
+  NGradientText,
+  NPopover,
+  NBadge,
+  NButtonGroup,
+  NCheckbox,
+  NCheckboxGroup,
 } from 'naive-ui'
 import App from './App.vue'
 import router from './router'
@@ -41,6 +50,8 @@ const comps = [
   NConfigProvider, NMessageProvider, NButton, NInput, NForm, NFormItem,
   NTabs, NTabPane, NDataTable, NSelect, NModal,
   NRadio, NRadioGroup, NDatePicker, NIcon, NEmpty,
+  NInputNumber, NColorPicker, NTag, NGradientText, NPopover, NBadge,
+  NButtonGroup, NCheckbox, NCheckboxGroup,
 ]
 
 comps.forEach((c) => {
