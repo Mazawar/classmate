@@ -1,0 +1,120 @@
+/* =========================================================
+   ClassMate 卡通风格主题
+   思路：柔和的糖果色 / 圆角大 / 描边 / 轻微阴影 / 卡通字
+   ========================================================= */
+
+:root {
+  --c-primary: #6c9ef5;      /* 糖果蓝 */
+  --c-primary-dark: #4a7fd8;
+  --c-secondary: #ffb86b;    /* 奶橙 */
+  --c-pink: #ff8fab;
+  --c-lavender: #a78bfa;
+  --c-mint: #6ee7b7;
+  --c-bg: #fdf6f0;           /* 奶油背景 */
+  --c-card: #ffffff;
+  --c-ink: #4a4a55;
+  --c-border: #e8d9cc;
+  --c-shadow: rgba(108, 158, 245, 0.18);
+  --radius: 18px;
+  --radius-lg: 26px;
+  --stroke: 3px solid #fff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 卡通标题：含中文时用圆润字重 */
+h1, h2, h3, h4 {
+  font-weight: 800;
+  color: #3b3b47;
+  letter-spacing: 0.5px;
+}
+
+/* 通用卡片 */
+.cartoon-card {
+  background: var(--c-card);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: 0 8px 24px var(--c-shadow);
+  border: 3px solid #fff;
+  position: relative;
+}
+
+/* 可爱按钮 */
+.cute-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.08);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  color: #fff;
+}
+.cute-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.08);
+}
+.cute-btn.primary { background: linear-gradient(135deg, var(--c-primary), var(--c-primary-dark)); }
+.cute-btn.secondary { background: linear-gradient(135deg, var(--c-secondary), #ff9d4d); }
+.cute-btn.pink { background: linear-gradient(135deg, var(--c-pink), #ff6f91); }
+
+/* 输入框圆润化（覆盖 Naive） */
+.n-input, .n-input-textarea {
+  border-radius: 14px !important;
+}
+
+/* 表格圆角 */
+.n-data-table {
+  border-radius: var(--radius) !important;
+  overflow: hidden;
+}
+
+/* 滚动条柔和 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #d9c6b2; border-radius: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 动画：弹入 */
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.92) translateY(12px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.pop-in { animation: popIn 0.4s ease both; }
+
+/* 页面容器：移动端适配 */
+.page-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.page-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+.page-sub {
+  color: #a89485;
+  font-size: 14px;
+  margin: 0 0 20px;
+}
+
+/* 移动端微调 */
+@media (max-width: 640px) {
+  .page-title { font-size: 19px; }
+  .page-wrap { padding: 14px 12px 32px; }
+}

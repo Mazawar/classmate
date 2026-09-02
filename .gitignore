@@ -1,0 +1,14 @@
+# 依赖/构建产物
+node_modules/
+dist/
+.venv/
+__pycache__/
+*.pyc
+
+# 数据库与本地配置（勿提交）
+*.db
+.env
+.classmate.db
+
+# 运行时
+.classmate.local/
