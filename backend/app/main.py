@@ -8,6 +8,7 @@ from . import models
 from .config import get_settings
 from .database import Base, engine
 from .routers import (
+    analytics,
     attendance,
     auth,
     cadres,
@@ -53,6 +54,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(classes.router)
 app.include_router(students.router)
+app.include_router(analytics.router)
 app.include_router(subjects.router)
 app.include_router(cadres.router)
 app.include_router(seats.router)

@@ -101,6 +101,19 @@ h1, h2, h3, h4 {
 }
 .status-btn:hover { transform: scale(1.05); }
 
+/* 学生姓名可点击链接（渲染函数生成） */
+.stu-link {
+  cursor: pointer;
+  color: var(--c-primary);
+  font-weight: 700;
+  border-bottom: 2px dashed #cfe0ff;
+}
+.stu-link:hover { color: var(--c-primary-dark); border-bottom-style: solid; }
+
+/* 表格内操作链接 */
+.link-btn { cursor: pointer; color: var(--c-primary); font-weight: 600; }
+.link-btn.danger { color: #ff6f6f; }
+
 
 /* 动画：弹入 */
 @keyframes popIn {

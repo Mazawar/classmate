@@ -26,6 +26,9 @@ import {
   NButtonGroup,
   NCheckbox,
   NCheckboxGroup,
+  NDrawer,
+  NDrawerContent,
+  NProgress,
 } from 'naive-ui'
 import App from './App.vue'
 import router from './router'
@@ -52,6 +55,7 @@ const comps = [
   NRadio, NRadioGroup, NDatePicker, NIcon, NEmpty,
   NInputNumber, NColorPicker, NTag, NGradientText, NPopover, NBadge,
   NButtonGroup, NCheckbox, NCheckboxGroup,
+  NDrawer, NDrawerContent, NProgress,
 ]
 
 comps.forEach((c) => {

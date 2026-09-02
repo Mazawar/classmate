@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/students", tags=["students"])
 
 
 def _to_out(s: models.Student, db: Optional[Session] = None) -> StudentOut:
+    """单个 student 转输出（会附带查一次座位/职务）。"""
     out = StudentOut.model_validate(s)
     out.class_name = s.class_.name if s.class_ else None
     if s.class_id and db is not None:
@@ -40,6 +41,40 @@ def _to_out(s: models.Student, db: Optional[Session] = None) -> StudentOut:
         if cadre:
             out.cadre = cadre.role
     return out
+
+
+def _batch_enrich(students: list, db: Session) -> list[StudentOut]:
+    """批量转换并附带座位/职务信息（用 2 次查询代替 N 次，避免 N+1）。"""
+    ids = [s.id for s in students]
+    outs = []
+    class_ids = {s.class_id for s in students if s.class_id}
+
+    seat_map = {}
+    cadres_map = {}
+    if ids:
+        seat_map = {
+            seat.student_id: seat
+            for seat in db.query(models.Seat)
+            .filter(models.Seat.student_id.in_(ids))
+            .all()
+        }
+        cadres_map = {
+            c.student_id: c
+            for c in db.query(models.ClassCadre)
+            .filter(models.ClassCadre.student_id.in_(ids))
+            .all()
+        }
+    for s in students:
+        out = StudentOut.model_validate(s)
+        out.class_name = s.class_.name if s.class_ else None
+        seat = seat_map.get(s.id)
+        if seat:
+            out.seat = f"{seat.row}排{seat.col}列"
+        cadre = cadres_map.get(s.id)
+        if cadre:
+            out.cadre = cadre.role
+        outs.append(out)
+    return outs
 
 
 @router.get("", response_model=PageResult)
@@ -75,7 +110,7 @@ def list_students(
         .limit(per_page)
         .all()
     )
-    return PageResult(total=total, items=[_to_out(s, db) for s in items])
+    return PageResult(total=total, items=_batch_enrich(items, db))
 
 
 @router.get("/stats", response_model=dict)

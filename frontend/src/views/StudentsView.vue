@@ -90,6 +90,9 @@
         </div>
       </template>
     </n-modal>
+
+    <!-- 学生画像抽屉 -->
+    <student-portrait v-model:show="portraitShow" :student-id="portraitId" />
   </div>
 </template>
 
@@ -97,6 +100,7 @@
 import { h, onMounted, reactive, ref, computed } from 'vue'
 import { useMessage } from 'naive-ui'
 import http from '../api/http'
+import StudentPortrait from '../components/StudentPortrait.vue'
 
 const message = useMessage()
 
@@ -117,6 +121,8 @@ const genderOptions = [
 const classOptions = ref([])
 
 const modalShow = ref(false)
+const portraitShow = ref(false)
+const portraitId = ref(null)
 const editing = ref(null)
 const birthTs = ref(null)
 const emptyForm = () => ({
@@ -127,7 +133,7 @@ const form = reactive(emptyForm())
 
 const columns = computed(() => [
   { title: '学号', key: 'student_no', minWidth: 90, render: (r) => r.student_no || '—' },
-  { title: '姓名', key: 'name', minWidth: 90 },
+  { title: '姓名', key: 'name', minWidth: 90, render: (r) => h('a', { class: 'stu-link', onClick: () => openPortrait(r) }, r.name) },
   { title: '性别', key: 'gender', minWidth: 60, render: (r) => (r.gender === 'M' ? '👦 男' : r.gender === 'F' ? '👧 女' : '—') },
   { title: '班级', key: 'class_name', minWidth: 100, render: (r) => r.class_name || '未分班' },
   { title: '座位', key: 'seat', minWidth: 80, render: (r) => r.seat || '—' },
@@ -224,6 +230,11 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+function openPortrait(row) {
+  portraitId.value = row.id
+  portraitShow.value = true
 }
 
 function remove(row) {

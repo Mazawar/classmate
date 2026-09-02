@@ -54,7 +54,10 @@ const route = useRoute()
 const navGroups = [
   {
     label: '',
-    items: [{ path: '/dashboard', label: '首页概览', icon: '🏠' }],
+    items: [
+      { path: '/dashboard', label: '首页概览', icon: '🏠' },
+      { path: '/analytics', label: '数据分析', icon: '📊' },
+    ],
   },
   {
     label: '班级管理',
