@@ -1,17 +1,21 @@
 <template>
-  <n-drawer v-model:show="show" :width="480" placement="right" :height="'100%'">
-    <n-drawer-content closable>
-      <template #header>
-        <div class="portrait-header">
-          <div class="avatar-big">{{ (data?.student?.name || '?').slice(0, 1) }}</div>
-          <div>
-            <div class="p-name">{{ data?.student?.name }}
-              <n-tag v-if="data?.cadre" size="small" round :bordered="false" type="warning" style="margin-left:6px">⭐{{ data.cadre }}</n-tag>
-            </div>
-            <div class="p-sub">{{ data?.student?.class_name }} · {{ genderLabel }} · {{ data?.student?.student_no }}</div>
+  <n-modal
+    v-model:show="show"
+    :mask-closable="true"
+    class="portrait-modal"
+    transform-origin="center"
+  >
+    <div class="portrait-card">
+      <div class="portrait-close" @click="show=false">✕</div>
+      <div class="portrait-header">
+        <div class="avatar-big">{{ (data?.student?.name || '?').slice(0, 1) }}</div>
+        <div>
+          <div class="p-name">{{ data?.student?.name }}
+            <n-tag v-if="data?.cadre" size="small" round :bordered="false" type="warning" style="margin-left:6px">⭐{{ data.cadre }}</n-tag>
           </div>
+          <div class="p-sub">{{ data?.student?.class_name }} · {{ genderLabel }} · {{ data?.student?.student_no }}</div>
         </div>
-      </template>
+      </div>
 
       <div v-if="!loading" class="portrait-body">
         <!-- 基本信息卡 -->
@@ -49,17 +53,32 @@
         </div>
       </div>
       <div v-else class="loading-box">加载中…</div>
-    </n-drawer-content>
-  </n-drawer>
+    </div>
+  </n-modal>
+
+  <!-- portrait end -->
 </template>
 
 <script setup>
-import { computed, ref, watch, defineProps, defineEmits } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount, defineProps, defineEmits } from 'vue'
 import http from '../api/http'
 import VChart, { CARTOON_COLORS, baseTooltip } from './VChart'
 
 const props = defineProps({ show: Boolean, studentId: Number })
 const emit = defineEmits(['update:show'])
+
+// 弹层宽度：桌面 720，窄屏自动贴合 94vw（居中）
+const viewportW = ref(typeof window !== 'undefined' ? window.innerWidth : 900)
+const isMobile = computed(() => viewportW.value < 640)
+const modalWidth = computed(() => (isMobile.value ? '94vw' : '720px'))
+function onResize() {
+  viewportW.value = window.innerWidth
+}
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  viewportW.value = window.innerWidth
+})
+onBeforeUnmount(() => window.removeEventListener('resize', onResize))
 
 const data = ref(null)
 const loading = ref(false)
@@ -140,7 +159,15 @@ const trendOption = computed(() => {
 </script>
 
 <style scoped>
-.portrait-header { display: flex; align-items: center; gap: 12px; }
+.portrait-header { display: flex; align-items: center; gap: 12px; padding-right: 26px; }
+.portrait-close {
+  position: absolute; top: 12px; right: 14px;
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #f3e9dd; color: #8a7a6b; cursor: pointer; font-size: 13px;
+  font-weight: 700; transition: all .12s;
+}
+.portrait-close:hover { background: #ff6f6f; color: #fff; transform: rotate(90deg); }
 .avatar-big {
   width: 46px; height: 46px; border-radius: 50%;
   background: linear-gradient(135deg, #ff8fab, #ffb86b);

@@ -75,7 +75,7 @@
     </n-modal>
 
     <!-- 成绩录入弹窗 -->
-    <n-modal v-model:show="scoreModal" preset="card" :title="`录入成绩：${scoreExam?.name || ''}`" style="max-width: 720px" :style="{ minWidth: '600px' }">
+    <n-modal v-model:show="scoreModal" preset="card" :title="`录入成绩：${scoreExam?.name || ''}`" style="max-width: 960px; width: min(96vw, 960px)">
       <div class="score-entry">
         <n-data-table
           :columns="scoreCols"

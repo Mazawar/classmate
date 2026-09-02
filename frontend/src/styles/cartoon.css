@@ -101,6 +101,27 @@ h1, h2, h3, h4 {
 }
 .status-btn:hover { transform: scale(1.05); }
 
+/* 学生画像：居中近全屏弹层（portrait-modal） */
+.portrait-modal .portrait-card {
+  width: min(94vw, 720px);
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 22px;
+  border: 3px solid #fff;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.14);
+  padding: 20px 18px;
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+  box-sizing: border-box;
+}
+/* n-modal 自身内边距去掉 */
+.portrait-modal { background: transparent; padding: 16px; }
+.portrait-modal .n-message{ display:none; }
+
+/* n-modal 卡片作为关闭按钮相对定位容器 */
+.n-modal .n-card { position: relative; }
+
 /* 学生姓名可点击链接（渲染函数生成） */
 .stu-link {
   cursor: pointer;
