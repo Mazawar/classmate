@@ -14,31 +14,42 @@
     </div>
 
     <div class="seats-container">
-      <div class="seats-inner">
-        <!-- 讲台 -->
-        <div class="podium">📺 讲台</div>
+      <div class="seat-matrix">
+        <!-- 左侧排号列：独立竖排，不参与课桌块宽度 -->
+        <div class="flag-lane" v-if="rows.length">
+          <div v-for="(row, ri) in rows" :key="ri" class="row-flag">
+            <span class="flag-big">{{ ri + 1 }}</span>
+            <span class="flag-word">排</span>
+          </div>
+        </div>
 
-        <!-- 座位网格 -->
-        <table class="seats-table carton">
-          <tr v-for="(row, ri) in rows" :key="ri">
-            <td class="row-label">第{{ ri + 1 }}排</td>
-            <td v-for="col in cols" :key="col" class="seat-cell">
+        <!-- 讲台 + 课桌：同一窄列容器，讲台正好相对课桌块居中 -->
+        <div class="grid-col" v-if="rows.length">
+          <div class="podium">📺 讲台</div>
+          <div class="seat-grid">
+            <div v-for="(row, ri) in rows" :key="ri" class="seat-rowwrap">
               <div
-                class="seat"
-                :class="{ occupied: seatAt(ri + 1, col).student_id }"
-                @click="assignSeat(ri + 1, col)"
+                v-for="(cell, ci) in row.cells"
+                :key="ci"
+                class="seat-cell"
               >
-                <template v-if="seatAt(ri + 1, col).student_id">
-                  <span class="seat-name">{{ seatName(seatAt(ri + 1, col).student_id) }}</span>
-                  <span class="seat-row">{{ seatAt(ri + 1, col).student_name }}</span>
-                </template>
-                <template v-else>
-                  <span class="seat-empty">空</span>
-                </template>
+                <div
+                  class="seat"
+                  :class="{ occupied: cell.student_id }"
+                  @click="assignSeat(row.row, ci + 1)"
+                >
+                  <template v-if="cell.student_id">
+                    <span class="seat-name">{{ seatName(cell.student_id) }}</span>
+                    <span class="seat-row">{{ cell.student_name }}</span>
+                  </template>
+                  <template v-else>
+                    <span class="seat-empty">空</span>
+                  </template>
+                </div>
               </div>
-            </td>
-          </tr>
-        </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -197,35 +208,63 @@ onMounted(loadClasses)
   padding: 24px;
   overflow-x: auto;
 }
-/* 讲台与网格同宽：横向滚动时讲台始终对齐座位中线，而不是对齐屏幕 */
-.seats-inner {
-  min-width: max-content;
+/* 排号竖列 + 课桌列横向并排；容器超宽时可整体横向滚动 */
+.seat-matrix {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: max-content;
   margin: 0 auto;
+  min-width: 0;
 }
+/* 左侧排号（窄竖条） */
+.flag-lane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 64px; /* 与讲台上沿隔开，行号垂直居中于各自课桌行 */
+}
+.row-flag {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #b39b86;
+  font-weight: 700;
+}
+.flag-big { font-size: 14px; color: #8a7a6b; }
+.flag-word { font-size: 10px; }
+/* 课桌列：宽度=课桌总和，讲台在内部 max-content 居中于课桌 */
+.grid-col {
+  width: max-content;
+}
+/* 讲台：短横块，正对课桌列中线 */
 .podium {
+  box-sizing: border-box;
   text-align: center;
   background: linear-gradient(135deg, #ffb86b, #ff8fab);
   color: #fff;
   font-weight: 800;
-  padding: 10px;
-  border-radius: 16px;
-  margin-bottom: 24px;
+  padding: 8px 26px;
+  border-radius: 14px;
+  margin: 0 auto 20px;
   letter-spacing: 2px;
+  font-size: 15px;
+  width: max-content;
+  display: block;
 }
-.seats-table {
-  border-collapse: separate;
-  border-spacing: 8px;
-  margin: 0 auto;
-  background: transparent !important;
+.seat-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
 }
-.seats-table .row-label {
-  color: #b39b86;
-  font-size: 12px;
-  text-align: center;
-  width: 48px;
-  font-weight: 700;
+.seat-rowwrap {
+  display: flex;
+  gap: 8px;
 }
-.seat-cell { padding: 4px; }
+.seat-cell { padding: 0; }
 .seat {
   width: 72px;
   height: 56px;
