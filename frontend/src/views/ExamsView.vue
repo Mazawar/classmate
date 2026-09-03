@@ -120,7 +120,7 @@
 
 <script setup>
 import { h, onMounted, reactive, ref, computed } from 'vue'
-import { useMessage, useDialog } from 'naive-ui'
+import { useMessage, useDialog, NInputNumber } from 'naive-ui'
 import http from '../api/http'
 
 const message = useMessage()
@@ -205,13 +205,15 @@ const scoreCols = computed(() => [
     key: 's' + s.id,
     width: 90,
     render: (row) =>
-      h('n-input-number', {
-        value: row.s[s.id],
+      // render 函数里必须传组件对象：h('n-input-number') 字符串
+      // 不会解析全局注册组件，会渲染成无法交互的未知元素
+      h(NInputNumber, {
+        value: row.s[s.id] ?? null,
         min: 0,
         max: s.full_score || 100,
         size: 'small',
         placeholder: '-',
-        'update:value': (v) => {
+        'onUpdate:value': (v) => {
           row.s[s.id] = v
         },
         style: 'width:80px',
@@ -223,18 +225,17 @@ async function openScoreEntry(e) {
   scoreExam.value = e
   pasteShow.value = false
   pasteText.value = ''
-  // 预填学生列表，若已有成绩则回填
-  const stuRes = await http.get('/students', { params: { class_id: classFilter.value, per_page: 200 } })
-  scoreRows.value = stuRes.items.map((st) => {
-    const prev = {}
-    if (summary.value && summary.value.exam_id === e.id) {
-      const row = summary.value.rows.find((r) => r.student_id === st.id)
-      if (row) {
-        for (const [k, v] of Object.entries(row.subjects)) prev[k] = v
-      }
-    }
-    return { ...st, s: prev }
-  })
+  // 回填不依赖页面当前展示的 summary：始终按本场考试现有成绩回填，
+  // 避免直接点「录入成绩」时表格空白、保存后清掉旧成绩
+  const [stuRes, sumRes] = await Promise.all([
+    http.get('/students', { params: { class_id: classFilter.value, per_page: 1000 } }),
+    http.get(`/exams/${e.id}/summary`).catch(() => null),
+  ])
+  const prevMap = {}
+  if (sumRes) {
+    for (const r of sumRes.rows || []) prevMap[r.student_id] = r.subjects || {}
+  }
+  scoreRows.value = stuRes.items.map((st) => ({ ...st, s: { ...(prevMap[st.id] || {}) } }))
   scoreModal.value = true
 }
 // ---- 粘贴导入：解析表格文本并填充到录入网格 ----

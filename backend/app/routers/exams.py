@@ -98,24 +98,40 @@ def save_scores(
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
+    """逐格 upsert：只新增/更新/删除本次提交涉及的 (学生, 科目) 组合，
+    绝不影响未提交的成绩（此前"先全删再回插"会把未录入的旧成绩清掉）。"""
     exam = db.query(models.Exam).filter(models.Exam.id == payload.exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="考试不存在")
-    # 删除该考试旧成绩
-    db.query(models.Score).filter(models.Score.exam_id == payload.exam_id).delete()
+
+    existing_map = {
+        (s.student_id, s.subject_id): s
+        for s in db.query(models.Score)
+        .filter(models.Score.exam_id == payload.exam_id)
+        .all()
+    }
     count = 0
     for cell in payload.rows:
         for subject_id, score in cell.scores.items():
-            if score is None:
+            sid = int(subject_id)
+            existing = existing_map.get((cell.student_id, sid))
+            if score is None or score == "":
+                # 明确清空 = 删除该格
+                if existing:
+                    db.delete(existing)
                 continue
-            rec = models.Score(
-                exam_id=payload.exam_id,
-                class_id=payload.class_id,
-                student_id=cell.student_id,
-                subject_id=subject_id,
-                score=float(score),
-            )
-            db.add(rec)
+            if existing:
+                existing.score = float(score)
+            else:
+                db.add(
+                    models.Score(
+                        exam_id=payload.exam_id,
+                        class_id=payload.class_id,
+                        student_id=cell.student_id,
+                        subject_id=sid,
+                        score=float(score),
+                    )
+                )
             count += 1
     db.commit()
     return {"saved": count}
