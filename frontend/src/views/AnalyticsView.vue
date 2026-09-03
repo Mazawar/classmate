@@ -6,8 +6,8 @@
         <p class="page-sub">同类型考试才可比：先选类型，再看趋势、对比与单科深钻</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <n-select v-model:value="classId" placeholder="班级" :options="classOptions" style="width:150px" @update:value="reload" />
-        <n-select v-model:value="typeId" placeholder="全部类型" :options="typeOptions" clearable style="width:140px" @update:value="reload" />
+        <n-select v-model:value="classId" placeholder="班级" :options="classOptions" style="width:150px" @update:value="onClassChange" />
+        <n-select v-model:value="typeId" placeholder="考试类型" :options="typeOptions" style="width:140px" @update:value="reload" />
       </div>
     </div>
 
@@ -35,13 +35,13 @@
       </div>
     </div>
 
-    <!-- 任意两场对比 -->
+    <!-- 任意两场对比（不限类型，才能期中 vs 期末） -->
     <div class="chart-card wide pop-in" style="margin-top:16px">
       <div class="chart-toolbar">
         <h4 style="flex:1">⚔️ 两场对比</h4>
-        <n-select v-model:value="examAId" :options="examOptions" size="small" style="width:170px" @update:value="loadCross" />
+        <n-select v-model:value="examAId" :options="allExamOptions" size="small" style="width:170px" @update:value="loadCross" />
         <span class="vs">vs</span>
-        <n-select v-model:value="examBId" :options="examOptions" size="small" style="width:170px" @update:value="loadCross" />
+        <n-select v-model:value="examBId" :options="allExamOptions" size="small" style="width:170px" @update:value="loadCross" />
       </div>
       <v-chart :option="crossOption" height="300px" v-if="crossData" />
       <n-empty v-else description="选择两场考试进行对比" style="padding:30px 0" />
@@ -61,7 +61,7 @@
       <div class="chart-card">
         <div class="chart-toolbar">
           <h4 style="flex:1">🎯 成绩分布</h4>
-          <n-select v-model:value="distExamId" :options="examOptions" size="small" style="width:150px" @update:value="loadDist" />
+          <n-select v-model:value="distExamId" :options="allExamOptions" size="small" style="width:170px" @update:value="loadDist" />
           <n-select v-model:value="distSubjectId" :options="subjectOptions" size="small" style="width:100px" @update:value="loadDist" />
         </div>
         <v-chart :option="distOption" height="280px" v-if="distSeries.length" />
@@ -75,7 +75,7 @@
       <div class="chart-card">
         <div class="chart-toolbar">
           <h4 style="flex:1">🥇 班级总分前十</h4>
-          <n-select v-model:value="topExamId" :options="examOptions" size="small" style="width:150px" @update:value="loadTop" />
+          <n-select v-model:value="topExamId" :options="allExamOptions" size="small" style="width:170px" @update:value="loadTop" />
         </div>
         <v-chart :option="topOption" height="280px" v-if="topSeries.length" />
         <n-empty v-else description="暂无数据" style="padding:30px 0" />
@@ -97,7 +97,7 @@ const typeId = ref(null)
 const typeOptions = ref([])
 const TYPE_MAP = {}
 
-const examOptions = ref([])   // 该班(+类型)考试，按日期升序
+const allExamOptions = ref([])   // 全班考试（不限类型），供对比/分布/前十选场次
 const subjectOptions = ref([])
 const subjectId = ref(null)
 
@@ -136,17 +136,34 @@ async function loadClassesAndTypes() {
   classOptions.value = cres.items.map((c) => ({ label: c.name, value: c.id }))
   typeOptions.value = tres.items.map((t) => ({ label: t.label, value: t.value }))
   for (const t of tres.items) TYPE_MAP[t.value] = t.label
-  if (classOptions.value.length) classId.value = classOptions.value[0].id
+  if (classOptions.value.length) classId.value = classOptions.value[0].value
+}
+
+// 切班级：类型重置为该班场次最多的类型（避免默认混比所有类型）
+async function onClassChange() {
+  typeId.value = null
+  await reload()
 }
 
 async function reload() {
   if (!classId.value) return
-  // 该班(+类型)的考试，按日期升序
+  // 全班考试（不限类型）：供 两场对比/分布/前十 自由选择场次
   const eres = await http.get('/exams', {
-    params: { class_id: classId.value, exam_type: typeId.value || undefined, per_page: 200 },
+    params: { class_id: classId.value, per_page: 200 },
   })
   const items = [...eres.items].sort((x, y) => ((x.date || '9999') < (y.date || '9999') ? -1 : 1))
-  examOptions.value = items.map((e) => ({ label: `${e.name} ${e.date || ''}`, value: e.id }))
+  allExamOptions.value = items.map((e) => ({
+    label: `${TYPE_MAP[e.exam_type] || '考试'}·${e.name} ${e.date || ''}`,
+    value: e.id,
+  }))
+
+  // 类型默认值：该班场次最多的类型（类型必选，杜绝默认混比）
+  if (!typeId.value) {
+    const count = {}
+    for (const e of items) count[e.exam_type || 'other'] = (count[e.exam_type || 'other'] || 0) + 1
+    const best = Object.entries(count).sort((a, b) => b[1] - a[1])[0]
+    typeId.value = best ? best[0] : (typeOptions.value[0] && typeOptions.value[0].value)
+  }
 
   const sres = await http.get('/subjects')
   subjectOptions.value = sres.items.map((s) => ({ label: s.name, value: s.id }))
