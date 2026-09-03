@@ -56,6 +56,7 @@ const navGroups = [
     label: '',
     items: [
       { path: '/dashboard', label: '首页概览', icon: '🏠' },
+      { path: '/warnings', label: '预警中心', icon: '🚨' },
       { path: '/analytics', label: '数据分析', icon: '📊' },
     ],
   },

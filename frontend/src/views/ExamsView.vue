@@ -77,6 +77,25 @@
     <!-- 成绩录入弹窗 -->
     <n-modal v-model:show="scoreModal" preset="card" :title="`录入成绩：${scoreExam?.name || ''}`" style="max-width: 960px; width: min(96vw, 960px)">
       <div class="score-entry">
+        <!-- 粘贴导入面板 -->
+        <div v-if="pasteShow" class="paste-panel">
+          <div class="paste-tip">
+            从 Excel / 微信表格直接复制粘贴进来。第一行表头写科目名（如「姓名 语文 数学 英语」），
+            后面每行一名学生，支持 Tab / 空格 / 逗号分隔，超出满分的会自动截断。
+          </div>
+          <n-input
+            v-model:value="pasteText"
+            type="textarea"
+            :rows="6"
+            placeholder="姓名	语文	数学	英语
+张三	105	98	92
+李四	88	112	95"
+          />
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px">
+            <n-button size="small" @click="pasteShow = false">收起</n-button>
+            <n-button size="small" type="primary" @click="parsePaste">📋 解析并填充到表格</n-button>
+          </div>
+        </div>
         <n-data-table
           :columns="scoreCols"
           :data="scoreRows"
@@ -87,9 +106,12 @@
         />
       </div>
       <template #footer>
-        <div style="display: flex; justify-content: flex-end; gap: 10px">
-          <n-button @click="scoreModal = false">关闭</n-button>
-          <n-button type="primary" :loading="saving" @click="saveScores">💾 保存成绩</n-button>
+        <div style="display: flex; justify-content: space-between; gap: 10px">
+          <n-button size="small" secondary @click="pasteShow = !pasteShow">{{ pasteShow ? '收起粘贴导入' : '📋 粘贴导入' }}</n-button>
+          <div style="display: flex; gap: 10px">
+            <n-button @click="scoreModal = false">关闭</n-button>
+            <n-button type="primary" :loading="saving" @click="saveScores">💾 保存成绩</n-button>
+          </div>
         </div>
       </template>
     </n-modal>
@@ -98,10 +120,11 @@
 
 <script setup>
 import { h, onMounted, reactive, ref, computed } from 'vue'
-import { useMessage } from 'naive-ui'
+import { useMessage, useDialog } from 'naive-ui'
 import http from '../api/http'
 
 const message = useMessage()
+const dialog = useDialog()
 const classFilter = ref(null)
 const classOptions = ref([])
 const exams = ref([])
@@ -120,6 +143,8 @@ const examForm = reactive({ name: '', remark: '' })
 const scoreModal = ref(false)
 const scoreExam = ref(null)
 const scoreRows = ref([])
+const pasteShow = ref(false)
+const pasteText = ref('')
 
 async function loadClasses() {
   const res = await http.get('/classes')
@@ -196,6 +221,8 @@ const scoreCols = computed(() => [
 
 async function openScoreEntry(e) {
   scoreExam.value = e
+  pasteShow.value = false
+  pasteText.value = ''
   // 预填学生列表，若已有成绩则回填
   const stuRes = await http.get('/students', { params: { class_id: classFilter.value, per_page: 200 } })
   scoreRows.value = stuRes.items.map((st) => {
@@ -210,6 +237,63 @@ async function openScoreEntry(e) {
   })
   scoreModal.value = true
 }
+// ---- 粘贴导入：解析表格文本并填充到录入网格 ----
+function parsePaste() {
+  const lines = pasteText.value.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  if (!lines.length) {
+    message.warning('请先粘贴表格内容')
+    return
+  }
+  const rows = lines.map((l) => l.split(/\t|,|;|\s+/).map((c) => c.trim()))
+  const header = rows[0].map((c) => c.replace(/[：:]/g, ''))
+  let nameCol = header.findIndex((c) => c.includes('姓') || c.includes('学生') || c === '名')
+  if (nameCol < 0) nameCol = 0
+
+  const colSub = {} // 列号 -> 科目
+  for (let i = 0; i < header.length; i++) {
+    if (i === nameCol || !header[i]) continue
+    const cell = header[i]
+    const subj = subjects.value.find(
+      (s) => s.name === cell || (s.short && s.short === cell) || (cell.length >= 2 && s.name.includes(cell))
+    )
+    if (subj) colSub[i] = subj
+  }
+  if (!Object.keys(colSub).length) {
+    message.error('表头未匹配到任何科目，请确认第一行是「姓名 语文 数学 …」这类标题')
+    return
+  }
+
+  let filled = 0
+  let cells = 0
+  const unknown = []
+  for (const r of rows.slice(1)) {
+    const name = r[nameCol] || ''
+    if (!name) continue
+    const stu = scoreRows.value.find((s) => s.name === name)
+    if (!stu) {
+      unknown.push(name)
+      continue
+    }
+    let hit = false
+    for (const [ci, subj] of Object.entries(colSub)) {
+      const v = r[ci]
+      if (v === undefined || v === '') continue
+      const num = parseFloat(v)
+      if (!isNaN(num)) {
+        stu.s[subj.id] = Math.min(num, subj.full_score || 100)
+        cells++
+        hit = true
+      }
+    }
+    if (hit) filled++
+  }
+  pasteShow.value = false
+  pasteText.value = ''
+  if (cells) message.success(`已填充 ${filled} 名学生共 ${cells} 个分数，请核对后保存`)
+  if (unknown.length) message.warning(`未找到这些学生：${unknown.join('、')}`, { duration: 5000 })
+  if (!cells) message.warning('没有解析到有效分数')
+}
+
 async function saveScores() {
   saving.value = true
   const rows = []
@@ -268,8 +352,12 @@ async function saveExam() {
   }
 }
 async function removeExam(e) {
-  message.warning(`确定删除考试「${e.name}」及所有成绩吗？`, { duration: 0, closable: true }, {
-    onAction: async () => {
+  dialog.warning({
+    title: '删除考试',
+    content: `确定删除考试「${e.name}」及它的全部成绩吗？此操作不可恢复。`,
+    positiveText: '🗑 删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
       try {
         await http.delete(`/exams/${e.id}`)
         message.success('已删除')
@@ -336,4 +424,11 @@ onMounted(() => {
 .pass-fill { height: 100%; border-radius: 6px; }
 .section-title { margin-top: 24px; margin-bottom: 12px; }
 .score-entry { overflow-x: auto; }
+.paste-panel {
+  background: #f6f8ff;
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.paste-tip { font-size: 12.5px; color: #8a7a6b; margin-bottom: 8px; line-height: 1.6; }
 </style>

@@ -27,11 +27,25 @@
       </div>
     </div>
 
+    <!-- 批量操作条 -->
+    <div class="batch-bar">
+      <n-button size="small" secondary @click="allPresent">✅ 一键全勤</n-button>
+      <span class="batch-divider"></span>
+      <span class="batch-label">选中 {{ checkedKeys.length }} 人，标记为：</span>
+      <n-button size="small" secondary type="warning" :disabled="!checkedKeys.length" @click="batchMark('late')">迟到</n-button>
+      <n-button size="small" secondary type="error" :disabled="!checkedKeys.length" @click="batchMark('absent')">缺勤</n-button>
+      <n-button size="small" secondary type="primary" :disabled="!checkedKeys.length" @click="batchMark('leave')">请假</n-button>
+      <div style="flex: 1"></div>
+      <n-button size="small" type="info" secondary @click="openPicker">🎯 随机点名</n-button>
+    </div>
+
     <!-- 打卡表格 -->
     <div class="att-table cartoon-card pop-in">
       <n-data-table
         :columns="attColumns"
         :data="day.records"
+        :row-key="(r) => r.student_id"
+        v-model:checked-row-keys="checkedKeys"
         :bordered="false"
         :pagination="false"
         size="small"
@@ -41,6 +55,21 @@
         <span class="att-tip">共 {{ day.total }} 人 · 未标记状态将视为「出勤」</span>
       </div>
     </div>
+
+    <!-- 随机点名 -->
+    <n-modal v-model:show="pickerShow" :mask-closable="true" transform-origin="center">
+      <div class="picker-card">
+        <div class="picker-title">🎯 随机点名</div>
+        <div class="picker-stage" :class="{ rolling: picking }">
+          <div class="picker-name">{{ picking ? rollName : (pickedName || '准备好了吗？') }}</div>
+          <div v-if="!picking && pickedName" class="picker-fire">🎉</div>
+        </div>
+        <div class="picker-actions">
+          <n-button secondary @click="pickerShow = false">关闭</n-button>
+          <n-button type="primary" :loading="picking" @click="roll">{{ pickedName ? '再来一次' : '开始点名' }}</n-button>
+        </div>
+      </div>
+    </n-modal>
 
     <!-- 近 30 天趋势 -->
     <h3 class="section-title">📅 近 30 天考勤趋势</h3>
@@ -58,7 +87,7 @@
 </template>
 
 <script setup>
-import { h, onMounted, ref } from 'vue'
+import { h, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useMessage } from 'naive-ui'
 import http from '../api/http'
 
@@ -69,6 +98,12 @@ const dateTs = ref(Date.now())
 const day = ref({ total: 0, present: 0, late: 0, absent: 0, leave: 0, records: [] })
 const saving = ref(false)
 const trendDays = ref([])
+const checkedKeys = ref([])
+const pickerShow = ref(false)
+const picking = ref(false)
+const rollName = ref('')
+const pickedName = ref('')
+let rollTimer = null
 
 const STATUS = {
   present: { label: '出勤', color: '#34d399' },
@@ -78,6 +113,7 @@ const STATUS = {
 }
 
 const attColumns = [
+  { type: 'selection' },
   { title: '姓名', key: 'student_name', width: 110, render: (r) => h('b', {}, r.student_name) },
   {
     title: '考勤状态',
@@ -95,6 +131,40 @@ const attColumns = [
 
 function setStatus(r, status) {
   r.status = status
+}
+
+// ---- 批量操作 ----
+async function allPresent() {
+  day.value.records.forEach((r) => (r.status = 'present'))
+  await saveDay(true)
+}
+async function batchMark(status) {
+  const set = new Set(checkedKeys.value)
+  day.value.records.forEach((r) => {
+    if (set.has(r.student_id)) r.status = status
+  })
+  await saveDay(true)
+  checkedKeys.value = []
+}
+
+// ---- 随机点名 ----
+function openPicker() {
+  pickedName.value = ''
+  pickerShow.value = true
+}
+function roll() {
+  const names = day.value.records.map((r) => r.student_name)
+  if (!names.length) return
+  picking.value = true
+  const t0 = Date.now()
+  rollTimer = setInterval(() => {
+    rollName.value = names[Math.floor(Math.random() * names.length)]
+    if (Date.now() - t0 > 1500) {
+      clearInterval(rollTimer)
+      picking.value = false
+      pickedName.value = names[Math.floor(Math.random() * names.length)]
+    }
+  }, 70)
 }
 function dateStr() {
   return new Date(dateTs.value).toISOString().slice(0, 10)
@@ -145,6 +215,7 @@ onMounted(() => {
   loadDay()
   loadTrend()
 })
+onBeforeUnmount(() => rollTimer && clearInterval(rollTimer))
 </script>
 
 <style scoped>
@@ -184,4 +255,44 @@ onMounted(() => {
 @media (max-width: 640px) {
   .att-stats { grid-template-columns: repeat(2, 1fr); }
 }
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 3px solid #fff;
+  border-radius: 16px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px var(--c-shadow);
+}
+.batch-divider { width: 1px; height: 18px; background: #eee2d4; margin: 0 4px; }
+.batch-label { font-size: 13px; color: #8a7a6b; font-weight: 600; }
+.picker-card {
+  background: #fff;
+  border-radius: 24px;
+  border: 3px solid #fff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  padding: 22px;
+  width: min(90vw, 360px);
+  text-align: center;
+}
+.picker-title { font-weight: 800; font-size: 16px; color: #4a4a55; margin-bottom: 14px; }
+.picker-stage {
+  min-height: 110px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f2f7ff, #fdf1f6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+}
+.picker-name { font-size: 30px; font-weight: 800; color: #4a7fd8; }
+.picker-stage.rolling .picker-name { color: #b39b86; animation: roll-blink 0.12s infinite alternate; }
+@keyframes roll-blink { from { opacity: 0.55; } to { opacity: 1; } }
+.picker-fire { font-size: 22px; }
+.picker-actions { display: flex; justify-content: center; gap: 10px; margin-top: 16px; }
 </style>

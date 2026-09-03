@@ -12,6 +12,7 @@ const routes = [
     component: () => import('../components/AppLayout.vue'),
     children: [
       { path: 'dashboard', name: 'dashboard', component: () => import('../views/DashboardView.vue'), meta: { title: '首页' } },
+      { path: 'warnings', name: 'warnings', component: () => import('../views/WarningsView.vue'), meta: { title: '预警中心' } },
       { path: 'analytics', name: 'analytics', component: () => import('../views/AnalyticsView.vue'), meta: { title: '数据分析' } },
       { path: 'students', name: 'students', component: () => import('../views/StudentsView.vue'), meta: { title: '学生档案' } },
       { path: 'classes', name: 'classes', component: () => import('../views/ClassesView.vue'), meta: { title: '班级管理' } },

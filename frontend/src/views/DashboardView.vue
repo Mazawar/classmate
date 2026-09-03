@@ -3,6 +3,13 @@
     <h2 class="page-title">👋 首页概览</h2>
     <p class="page-sub">亲爱的班主任，今天也要元气满满哦！{{ greeting }} · {{ today }}{{ weekday }}</p>
 
+    <!-- 预警提醒横幅 -->
+    <div v-if="warnCount > 0" class="warn-banner pop-in" @click="$router.push('/warnings')">
+      <span class="wb-icon">🚨</span>
+      <span class="wb-text">有 <b>{{ warnCount }}</b> 名学生近期需要重点关注（成绩下滑 / 考勤异常）</span>
+      <span class="wb-go">去查看 →</span>
+    </div>
+
     <!-- 综合统计 -->
     <div class="stats">
       <div class="stat-card c-blue pop-in"><div class="stat-icon">👨‍🎓</div><div class="stat-num">{{ stats.total_students || 0 }}</div><div class="stat-label">学生总数</div></div>
@@ -50,6 +57,7 @@ import http from '../api/http'
 import VChart, { CARTOON_COLORS, baseTooltip } from '../components/VChart'
 
 const stats = ref({})
+const warnCount = ref(0)
 const genderData = ref([])
 const classData = ref([])
 const compareItems = ref([])
@@ -66,11 +74,11 @@ const today = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'nume
 const weekday = new Date().toLocaleDateString('zh-CN', { weekday: 'long' })
 
 const quickLinks = [
+  { path: '/warnings', icon: '🚨', name: '预警中心', desc: '谁需要重点关注' },
   { path: '/analytics', icon: '📊', name: '数据分析', desc: '成绩/考勤可视化分析' },
   { path: '/students', icon: '🧑‍🎓', name: '学生档案', desc: '管理学生信息、看画像' },
   { path: '/attendance', icon: '✅', name: '考勤打卡', desc: '每日出勤登记' },
   { path: '/exams', icon: '📈', name: '成绩管理', desc: '录入成绩、查看排名' },
-  { path: '/schedule', icon: '📋', name: '课程表', desc: '课程安排' },
   { path: '/seats', icon: '💺', name: '座位表', desc: '可视化排座' },
 ]
 
@@ -123,6 +131,8 @@ const compareOption = computed(() => {
 
 async function loadAll() {
   stats.value = await http.get('/students/stats')
+  // 预警数（失败不阻塞首页）
+  http.get('/warnings').then((w) => { warnCount.value = w.attention_count || 0 }).catch(() => {})
   // 性别
   const o = await http.get('/analytics/overview')
   const male = o.classes.reduce((s, c) => s + c.male, 0)
@@ -161,6 +171,24 @@ onMounted(loadAll)
 .stat-num { font-size: 30px; font-weight: 800; margin: 4px 0; }
 .stat-label { font-size: 13px; opacity: .95; }
 .tip { color: #b39b86; font-size: 12px; font-weight: 400; }
+.warn-banner {
+  margin: 6px 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #fff0f0, #ffe3e3);
+  border: 3px solid #fff;
+  border-radius: var(--radius-lg);
+  padding: 12px 16px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.12);
+  transition: transform 0.15s;
+}
+.warn-banner:hover { transform: translateY(-2px); }
+.wb-icon { font-size: 22px; }
+.wb-text { flex: 1; color: #c0392b; font-weight: 600; font-size: 14px; }
+.wb-text b { font-size: 18px; }
+.wb-go { color: #ef4444; font-weight: 800; font-size: 13px; }
 .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
 .chart-card { background: #fff; border-radius: var(--radius-lg); padding: 16px 18px; border: 3px solid #fff; box-shadow: 0 6px 18px var(--c-shadow); }
 .chart-card h4 { margin: 0 0 10px; font-size: 15px; color: #4a4a55; }

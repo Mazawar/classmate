@@ -136,10 +136,11 @@ body > .n-modal .portrait-card,
 .link-btn.danger { color: #ff6f6f; }
 
 
-/* 动画：弹入 */
+/* 动画：弹入（只动 transform，不碰 opacity —— 避免 WebView 后台节流/
+   动画时钟冻结时元素停留在透明帧而"消失"） */
 @keyframes popIn {
-  0% { opacity: 0; transform: scale(0.92) translateY(12px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+  0% { transform: scale(0.92) translateY(12px); }
+  100% { transform: scale(1) translateY(0); }
 }
 .pop-in { animation: popIn 0.4s ease both; }
 

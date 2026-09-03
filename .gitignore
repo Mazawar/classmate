@@ -9,6 +9,7 @@ __pycache__/
 *.db
 .env
 .classmate.db
+.jwt_secret
 
 # 运行时
 .classmate.local/

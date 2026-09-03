@@ -19,12 +19,33 @@ from .routers import (
     seats,
     students,
     subjects,
+    warnings,
 )
 
 settings = get_settings()
 
 # 建表（新表会自动创建；已有表不自动加列）
 Base.metadata.create_all(bind=engine)
+
+
+def _ensure_indexes():
+    """高频查询的复合索引（幂等，已存在则跳过）。"""
+    stmts = [
+        # 成绩排名统计：按考试+班级取全部分数再按学生聚合
+        "CREATE INDEX IF NOT EXISTS idx_scores_exam_class_student ON scores(exam_id, class_id, student_id)",
+        # 学生画像：按学生取历次成绩
+        "CREATE INDEX IF NOT EXISTS idx_scores_student_exam ON scores(student_id, exam_id)",
+        # 考勤趋势：按日期窗口聚合
+        "CREATE INDEX IF NOT EXISTS idx_attendance_date_status ON attendance(date, status)",
+        # 预警中心：按班级取历次考试
+        "CREATE INDEX IF NOT EXISTS idx_exams_class_date ON exams(class_id, date)",
+    ]
+    with engine.begin() as conn:
+        for s in stmts:
+            conn.exec_driver_sql(s)
+
+
+_ensure_indexes()
 
 
 def _ensure_column(table: str, column_def: str):
@@ -62,6 +83,7 @@ app.include_router(schedule.router)
 app.include_router(exams.router)
 app.include_router(attendance.router)
 app.include_router(export.router)
+app.include_router(warnings.router)
 
 
 @app.get("/")
