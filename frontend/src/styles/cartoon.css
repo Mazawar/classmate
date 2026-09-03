@@ -170,23 +170,30 @@ body > .n-modal .portrait-card,
   .page-wrap { padding: 14px 12px 32px; }
 }
 
-/* 数据表格：固定最大高度、内部纵向滚动、表头吸顶。
-   避免数据多时把整页撑得无限长。给表格外包一层 class="tbl-scroll" 即可。 */
+/* 数据表格：固定最大高度 + 滚动条，表头固定。
+   关键：滚动必须发生在 Naive 元素 .n-data-table 自己身上（否则它自带的
+   overflow:hidden 形成独立滚动上下文会吃掉表头 sticky）。
+   .tbl-scroll 仅裁剪/限制宽高，不自身滚动。 */
 .tbl-scroll {
+  max-height: 520px;
+  overflow: hidden;
+}
+.tbl-scroll .n-data-table {
   max-height: 520px;
   overflow-y: auto;
   overflow-x: auto;
+  border-collapse: separate;
   scrollbar-width: thin;
   scrollbar-color: #d9c6b2 transparent;
 }
-.tbl-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.tbl-scroll::-webkit-scrollbar-thumb { background: #d9c6b2; border-radius: 8px; }
-.tbl-scroll .n-data-table { border-collapse: separate; }
-.tbl-scroll table.n-data-table-table { border-collapse: separate; border-spacing: 0; }
-.tbl-scroll .n-data-table-thead { position: sticky; top: 0; z-index: 3; }
-.tbl-scroll .n-data-table-thead > .n-data-table-tr > .n-data-table-th,
-.tbl-scroll .n-data-table-thead th,
-.tbl-scroll thead th {
-  background: #fdf9f4;
+.tbl-scroll .n-data-table::-webkit-scrollbar { width: 8px; height: 8px; }
+.tbl-scroll .n-data-table::-webkit-scrollbar-thumb { background: #d9c6b2; border-radius: 8px; }
+/* 表头吸顶：以 .n-data-table(滚动容器)为参照逐格 sticky（thead 级在部分内核不稳定） */
+.tbl-scroll .n-data-table thead th,
+.tbl-scroll .n-data-table .n-data-table-thead .n-data-table-th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 3;
+  background: #fdf9f4 !important;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.04);
 }

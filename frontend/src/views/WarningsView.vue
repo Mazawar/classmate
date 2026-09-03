@@ -20,23 +20,18 @@
       <div class="sum-item good"><b>{{ (data.rising || []).length }}</b><span>进步之星 🌟</span></div>
     </div>
 
-    <!-- 重点关注 -->
-    <h3 class="section-title">🎯 重点关注名单</h3>
-    <div v-if="data.attention?.length" class="warn-grid">
-      <div v-for="(w, i) in data.attention" :key="w.student_id" class="warn-card pop-in" :style="{ animationDelay: i * 0.03 + 's' }" @click="openPortrait(w.student_id)">
-        <div class="wc-head">
-          <div class="wc-avatar">{{ w.name.slice(0, 1) }}</div>
-          <div class="wc-who">
-            <div class="wc-name">{{ w.name }}</div>
-            <div class="wc-class">{{ w.class_name }} · 现排名 #{{ w.latest_rank }}</div>
-          </div>
-          <n-tag :type="w.rank_drop >= rankDrop ? 'error' : 'warning'" size="small" round :bordered="false">
-            {{ w.rank_drop >= rankDrop ? `↓${w.rank_drop} 名` : '考勤异常' }}
-          </n-tag>
-        </div>
-        <div class="wc-reasons">
-          <div v-for="r in w.reasons" :key="r" class="wc-reason">{{ r }}</div>
-        </div>
+    <!-- 重点关注名单 -->
+    <h3 class="section-title">🎯 重点关注名单（{{ attention.length }}）</h3>
+    <div v-if="attention.length" class="att-card pop-in">
+      <div class="tbl-scroll">
+        <n-data-table
+          :columns="attnColumns"
+          :data="attention"
+          :row-key="(r) => r.student_id"
+          :bordered="false"
+          :pagination="false"
+          size="small"
+        />
       </div>
     </div>
     <div v-else class="empty-tip">🎉 暂无预警，同学们状态都不错！</div>
@@ -68,8 +63,8 @@
 </template>
 
 <script setup>
-import { h, onMounted, ref } from 'vue'
-import { useMessage } from 'naive-ui'
+import { computed, h, onMounted, ref } from 'vue'
+import { useMessage, NTag } from 'naive-ui'
 import http from '../api/http'
 import StudentPortrait from '../components/StudentPortrait.vue'
 
@@ -91,6 +86,36 @@ const windowOptions = [
 const data = ref({})
 const portraitShow = ref(false)
 const portraitId = ref(null)
+
+const attention = computed(() => data.value.attention || [])
+
+const attnColumns = [
+  {
+    title: '学生', key: 'name', width: 130,
+    render: (r) =>
+      h('div', { style: 'cursor:pointer', onClick: () => openPortrait(r.student_id) }, [
+        h('div', { style: 'font-weight:800;color:#4a4a55' }, r.name),
+        h('div', { style: 'font-size:12px;color:#b39b86' }, `现排名 #${r.latest_rank} · ${r.exam_count} 次考试`),
+      ]),
+  },
+  { title: '班级', key: 'class_name', width: 110 },
+  {
+    title: '类型', key: 'kind', width: 130,
+    render: (r) => {
+      if (r.rank_drop >= rankDrop.value)
+        return h(NTag, { type: 'error', size: 'small', round: true, bordered: false }, () => `成绩滑落 ↓${r.rank_drop}`)
+      return h(NTag, { type: 'warning', size: 'small', round: true, bordered: false }, () => '考勤异常')
+    },
+  },
+  {
+    title: '预警原因', key: 'reasons',
+    render: (r) =>
+      h('div', { style: 'display:flex;flex-direction:column;gap:3px;padding:2px 0' },
+        (r.reasons || []).map((x) =>
+          h('div', { style: 'font-size:12.5px;color:#8a7a6b;background:#fdf4ec;border-radius:6px;padding:2px 7px;width:max-content' }, x)
+        )),
+  },
+]
 
 const attColumns = [
   { title: '姓名', key: 'name', width: 100, render: (r) => h('b', { style: 'cursor:pointer', onClick: () => openPortrait(r.student_id) }, r.name) },
