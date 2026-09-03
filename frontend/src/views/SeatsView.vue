@@ -14,30 +14,32 @@
     </div>
 
     <div class="seats-container">
-      <!-- 讲台 -->
-      <div class="podium">📺 讲台</div>
+      <div class="seats-inner">
+        <!-- 讲台 -->
+        <div class="podium">📺 讲台</div>
 
-      <!-- 座位网格 -->
-      <table class="seats-table carton">
-        <tr v-for="(row, ri) in rows" :key="ri">
-          <td class="row-label">第{{ ri + 1 }}排</td>
-          <td v-for="col in cols" :key="col" class="seat-cell">
-            <div
-              class="seat"
-              :class="{ occupied: seatAt(ri + 1, col).student_id }"
-              @click="assignSeat(ri + 1, col)"
-            >
-              <template v-if="seatAt(ri + 1, col).student_id">
-                <span class="seat-name">{{ seatName(seatAt(ri + 1, col).student_id) }}</span>
-                <span class="seat-row">{{ seatAt(ri + 1, col).student_name }}</span>
-              </template>
-              <template v-else>
-                <span class="seat-empty">空</span>
-              </template>
-            </div>
-          </td>
-        </tr>
-      </table>
+        <!-- 座位网格 -->
+        <table class="seats-table carton">
+          <tr v-for="(row, ri) in rows" :key="ri">
+            <td class="row-label">第{{ ri + 1 }}排</td>
+            <td v-for="col in cols" :key="col" class="seat-cell">
+              <div
+                class="seat"
+                :class="{ occupied: seatAt(ri + 1, col).student_id }"
+                @click="assignSeat(ri + 1, col)"
+              >
+                <template v-if="seatAt(ri + 1, col).student_id">
+                  <span class="seat-name">{{ seatName(seatAt(ri + 1, col).student_id) }}</span>
+                  <span class="seat-row">{{ seatAt(ri + 1, col).student_name }}</span>
+                </template>
+                <template v-else>
+                  <span class="seat-empty">空</span>
+                </template>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
     </div>
 
     <!-- 学生选择弹窗 -->
@@ -194,6 +196,11 @@ onMounted(loadClasses)
   border-radius: var(--radius-lg);
   padding: 24px;
   overflow-x: auto;
+}
+/* 讲台与网格同宽：横向滚动时讲台始终对齐座位中线，而不是对齐屏幕 */
+.seats-inner {
+  min-width: max-content;
+  margin: 0 auto;
 }
 .podium {
   text-align: center;
