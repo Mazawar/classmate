@@ -49,6 +49,7 @@
           v-model:checked-row-keys="checkedKeys"
           :bordered="false"
           :pagination="false"
+          :max-height="520"
           size="small"
         />
       </div>

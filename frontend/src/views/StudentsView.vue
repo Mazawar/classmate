@@ -41,6 +41,7 @@
         :loading="loading"
         :pagination="pagination"
         :bordered="false"
+        :max-height="520"
         remote
       />
     </div>

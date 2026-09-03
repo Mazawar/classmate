@@ -30,6 +30,7 @@
           :row-key="(r) => r.student_id"
           :bordered="false"
           :pagination="false"
+          :max-height="520"
           size="small"
         />
       </div>
@@ -53,7 +54,7 @@
       <h3 class="section-title">📅 近 {{ data.window_days }} 天考勤异常</h3>
       <div class="att-card">
         <div class="tbl-scroll">
-          <n-data-table :columns="attColumns" :data="data.attendance_alerts" :bordered="false" :pagination="false" size="small" />
+          <n-data-table :columns="attColumns" :data="data.attendance_alerts" :bordered="false" :pagination="false" :max-height="420" size="small" />
         </div>
       </div>
     </template>

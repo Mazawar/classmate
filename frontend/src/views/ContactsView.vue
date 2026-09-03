@@ -21,6 +21,7 @@
         :loading="loading"
         :bordered="false"
         :pagination="pagination"
+        :max-height="520"
       />
     </div>
   </div>

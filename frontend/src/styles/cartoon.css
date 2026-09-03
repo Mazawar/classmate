@@ -170,30 +170,11 @@ body > .n-modal .portrait-card,
   .page-wrap { padding: 14px 12px 32px; }
 }
 
-/* 数据表格：固定最大高度 + 滚动条，表头固定。
-   关键：滚动必须发生在 Naive 元素 .n-data-table 自己身上（否则它自带的
-   overflow:hidden 形成独立滚动上下文会吃掉表头 sticky）。
-   .tbl-scroll 仅裁剪/限制宽高，不自身滚动。 */
+/* 数据表格：表头固定 + 内容滚动。
+   实现：给 n-data-table 传原生 :max-height 属性（Naive 会把内部滚动结构
+   搭配好、表头自动固定）。不要在外层 wrapper 上做 overflow 滚动 ——
+   Naive 内部有多层 overflow:hidden 包装，外滚会让 sticky 表头失效。
+   .tbl-scroll 仅作为普通容器保留（承载边距/动画类），自身不滚动。 */
 .tbl-scroll {
-  max-height: 520px;
-  overflow: hidden;
-}
-.tbl-scroll .n-data-table {
-  max-height: 520px;
-  overflow-y: auto;
-  overflow-x: auto;
-  border-collapse: separate;
-  scrollbar-width: thin;
-  scrollbar-color: #d9c6b2 transparent;
-}
-.tbl-scroll .n-data-table::-webkit-scrollbar { width: 8px; height: 8px; }
-.tbl-scroll .n-data-table::-webkit-scrollbar-thumb { background: #d9c6b2; border-radius: 8px; }
-/* 表头吸顶：以 .n-data-table(滚动容器)为参照逐格 sticky（thead 级在部分内核不稳定） */
-.tbl-scroll .n-data-table thead th,
-.tbl-scroll .n-data-table .n-data-table-thead .n-data-table-th {
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 3;
-  background: #fdf9f4 !important;
-  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.04);
+  min-width: 0;
 }

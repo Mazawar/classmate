@@ -54,6 +54,7 @@
           :bordered="false"
           :pagination="false"
           :scroll-x="600"
+          :max-height="520"
           size="small"
         />
       </div>
@@ -112,6 +113,7 @@
             :bordered="false"
             :pagination="false"
             :scroll-x="600"
+            :max-height="480"
             size="small"
           />
         </div>
