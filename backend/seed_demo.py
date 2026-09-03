@@ -155,19 +155,38 @@ def add_demo_data(db: Session):
                                            subject_id=subj.id, teacher=random.choice(TEACHERS)))
     db.commit()
 
-    # ---- 考试：3 次 + 成绩：每科每人 ----
-    dates = [date(2026, 5, 20), date(2026, 9, 20), date(2026, 11, 15)]
-    names = ["上学期期中", "上学期期末", "本学期期中"]
+    # ---- 考试：多类型 + 成绩：每科每人 ----
+    # 类型与场次足够多，支撑「同类型趋势 / 跨类型对比 / 单科深钻」等分析
+    exam_plan = [  # (名称, 类型, 相对今天的月偏移)
+        ("第九周周考", "weekly", -5),
+        ("第十周周考", "weekly", -4.5),
+        ("第九次月考", "monthly", -4),
+        ("第十一周周考", "weekly", -3.5),
+        ("上学期期中", "midterm", -4),
+        ("单元自测·函数", "unit", -3),
+        ("第十次月考", "monthly", -3),
+        ("第十二周周考", "weekly", -2.5),
+        ("第十一次月考", "monthly", -2),
+        ("单元自测·几何", "unit", -2),
+        ("上学期期末", "final", -2),
+        ("第十二次月考", "monthly", -1),
+        ("本学期期中", "midterm", 0),
+        ("中考模拟一", "mock", 0),
+    ]
+    from datetime import timedelta as _td
+    today = date.today()
     for cls in classes:
         stus = student_by_class[cls.id]
         ability = {s.id: random.gauss(0.62, 0.10) for s in stus}
-        for ei, (edate, exam_name) in enumerate(zip(dates, names)):
-            exam = models.Exam(class_id=cls.id, name=exam_name, date=edate)
+        for ei, (exam_name, etype, months_ago) in enumerate(exam_plan):
+            edate = today + _td(days=int(months_ago * 30.4))  # months_ago 为负 → 过去
+            exam = models.Exam(class_id=cls.id, name=exam_name, date=edate,
+                               exam_type=etype)
             db.add(exam)
             db.commit()
             db.refresh(exam)
             for st in stus:
-                a = ability[st.id] + ei * 0.012 + random.gauss(0, 0.04)
+                a = ability[st.id] + ei * 0.008 + random.gauss(0, 0.04)
                 for subj in subj_map.values():
                     full = subj.full_score or 100
                     score = a * full + random.gauss(0, full * 0.055)
@@ -176,6 +195,7 @@ def add_demo_data(db: Session):
                     score = round(max(0, min(full, score)), 1)
                     db.add(models.Score(exam_id=exam.id, class_id=cls.id,
                                         student_id=st.id, subject_id=subj.id, score=score))
+        db.commit()
 
     # ---- 考勤：最近 60 个自然日（工作日）----
     start = date.today() - timedelta(days=59)

@@ -59,6 +59,41 @@ def _ensure_column(table: str, column_def: str):
 
 
 _ensure_column("students", "guardian_phone2 VARCHAR(32)")
+_ensure_column("exams", "exam_type VARCHAR(24) DEFAULT 'other'")
+
+
+def _backfill_exam_types():
+    """存量考试按名字启发式归类 exam_type（一次性，已有类型的不动）。"""
+    rules = [
+        ("midterm", ("期中",)),
+        ("final", ("期末",)),
+        ("weekly", ("周考", "周测", "周练")),
+        ("monthly", ("月考", "月测")),
+        ("unit", ("单元", "章节")),
+        ("mock", ("模拟", "模考")),
+        ("subject", ("单科", "专项")),
+        ("unified", ("统考", "统一考试", "联考")),
+    ]
+    insp = inspect(engine)
+    cols = {c["name"] for c in insp.get_columns("exams")}
+    if "exam_type" not in cols:
+        return
+    with engine.begin() as conn:
+        rows = conn.exec_driver_sql(
+            "SELECT id, name FROM exams WHERE exam_type IS NULL OR exam_type = 'other'"
+        ).fetchall()
+        for eid, name in rows:
+            name = (name or "").lower()
+            for tval, keys in rules:
+                if any(k in name for k in keys):
+                    conn.exec_driver_sql(
+                        "UPDATE exams SET exam_type = ? WHERE id = ?",
+                        (tval, eid),
+                    )
+                    break
+
+
+_backfill_exam_types()
 
 
 app = FastAPI(title="ClassMate 学生管理系统", version=settings.version)

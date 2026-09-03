@@ -106,7 +106,8 @@ def warnings(
         for i, (_t, sid) in enumerate(entries, 1):
             rank[(e.id, sid)] = i
 
-    # 逐学生对比最近两次都有成绩的考试
+    # 逐学生对比：按「同类型考试」取相邻两场比较（周考与期末混比没有意义）；
+    # 学生有多个类型时，取下滑/进步最显著的那组作为该生的预警依据
     attention = []
     rising = []
     for st in students:
@@ -118,19 +119,41 @@ def warnings(
         ]
         if len(history) < 2:
             continue
-        prev, last = history[-2], history[-1]
-        # 名次数字越小越好：last 名次数字变大 = 下滑
-        drop = last[2] - prev[2]   # >0 表示名次下滑
-        gain = -drop               # >0 表示名次进步
+        # 按类型分组，每组内取相邻两场
+        groups: dict[str, list] = {}
+        for e, total, rk in history:
+            groups.setdefault(e.exam_type or "other", []).append((e, total, rk))
+        pairs = []
+        for _t, g in groups.items():
+            if len(g) >= 2:
+                pairs.append((g[-2], g[-1]))  # (prev, last)
+        if not pairs:
+            continue
+        # 各组算 drop，取最大者为该生预警；同时记最大 gain 用于进步榜
+        best_drop = None
+        best_gain = None
+        for prev, last in pairs:
+            drop = last[2] - prev[2]   # 名次数字变大 = 下滑
+            tlabel = models.Exam.TYPE_MAP.get(prev[0].exam_type or "other", "考试")
+            sig = {"prev": prev, "last": last, "drop": drop, "gain": -drop, "tlabel": tlabel}
+            if best_drop is None or drop > best_drop["drop"]:
+                best_drop = sig
+            if best_gain is None or sig["gain"] > best_gain["gain"]:
+                best_gain = sig
+
         st_att = att_agg.get(st.id, {})
         att_bad = st_att.get("absent", 0) + st_att.get("late", 0)
 
+        sig = best_drop
+        drop = sig["drop"]
+        prev, last = sig["prev"], sig["last"]
+        tlabel = sig["tlabel"]
         if drop >= rank_drop or att_bad >= absent_threshold:
             reasons = []
             if drop >= rank_drop:
-                reasons.append(f"排名 #{prev[2]} → #{last[2]}（下滑 {drop} 名）")
+                reasons.append(f"{tlabel}排名 #{prev[2]} → #{last[2]}（下滑 {drop} 名）")
             total_drop = round(last[1] - prev[1], 1)
-            if total_drop < 0:
+            if total_drop < 0 and drop >= rank_drop:
                 reasons.append(f"总分 {prev[1]:g} → {last[1]:g}（{total_drop}）")
             if att_bad >= absent_threshold:
                 reasons.append(
@@ -149,15 +172,17 @@ def warnings(
                 "late": st_att.get("late", 0),
             })
 
-        if gain >= rank_drop:
+        if best_gain["gain"] >= rank_drop:
+            gprev, glast = best_gain["prev"], best_gain["last"]
             rising.append({
                 "student_id": st.id,
                 "name": st.name,
                 "class_id": st.class_id,
                 "class_name": st.class_.name if st.class_ else None,
-                "rank_gain": gain,
-                "from_rank": prev[2],
-                "to_rank": last[2],
+                "rank_gain": best_gain["gain"],
+                "from_rank": gprev[2],
+                "to_rank": glast[2],
+                "type": best_gain["tlabel"],
             })
     attention.sort(key=lambda x: (-x["rank_drop"], -(x["absent"] * 2 + x["late"])))
     rising.sort(key=lambda x: -x["rank_gain"])

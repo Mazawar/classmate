@@ -47,16 +47,20 @@ def overview(
 @router.get("/exam-trend")
 def exam_trend(
     class_id: int,
+    exam_type: Optional[str] = None,
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
-    """某班历次考试：各科平均分趋势（多根折线）。"""
-    exams = (
+    """某班历次考试：各科平均分趋势（多根折线）。exam_type 过滤后
+    只比较同类型考试（周考和期末混在一条线上没有意义）。"""
+    query = (
         db.query(models.Exam)
         .filter(models.Exam.class_id == class_id)
-        .order_by(models.Exam.date.asc())
-        .all()
+        .order_by(models.Exam.date.asc().nullslast(), models.Exam.id.asc())
     )
+    if exam_type:
+        query = query.filter(models.Exam.exam_type == exam_type)
+    exams = query.all()
     if not exams:
         return {"exams": [], "subjects": []}
 
@@ -317,4 +321,137 @@ def student_portrait(
             "leave": att.get("leave", 0),
             "days": sum(att.values()),
         },
+    }
+
+
+@router.get("/subject-trend")
+def subject_trend(
+    class_id: int,
+    subject_id: int,
+    exam_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    """单科深钻：该班此科目在(同类型)历次考试中的 均分/最高/最低/及格率。"""
+    subj = db.query(models.Subject).filter(models.Subject.id == subject_id).first()
+    if not subj:
+        raise HTTPException(404, "科目不存在")
+    full = subj.full_score or 100
+
+    q = (
+        db.query(models.Exam)
+        .filter(models.Exam.class_id == class_id)
+        .order_by(models.Exam.date.asc().nullslast(), models.Exam.id.asc())
+    )
+    if exam_type:
+        q = q.filter(models.Exam.exam_type == exam_type)
+    exams = q.all()
+    exam_ids = [e.id for e in exams]
+    if not exam_ids:
+        return {"subject": subj.name, "full": full, "items": []}
+
+    rows = (
+        db.query(models.Score.exam_id, models.Score.score)
+        .filter(
+            models.Score.exam_id.in_(exam_ids),
+            models.Score.subject_id == subject_id,
+            models.Score.score.isnot(None),
+        )
+        .all()
+    )
+    by_exam: dict[int, list[float]] = {}
+    for eid, sc in rows:
+        by_exam.setdefault(eid, []).append(float(sc))
+
+    items = []
+    for e in exams:
+        vals = by_exam.get(e.id, [])
+        passed = sum(1 for v in vals if v >= full * 0.6)
+        items.append({
+            "exam_id": e.id,
+            "name": e.name,
+            "date": str(e.date) if e.date else "",
+            "count": len(vals),
+            "avg": round(sum(vals) / len(vals), 1) if vals else None,
+            "max": round(max(vals), 1) if vals else None,
+            "min": round(min(vals), 1) if vals else None,
+            "pass_rate": round(passed / len(vals) * 100, 1) if vals else None,
+        })
+    return {"subject": subj.name, "full": full, "items": items}
+
+
+@router.get("/cross-compare")
+def cross_compare(
+    class_id: int,
+    exam_a: int,
+    exam_b: int,
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    """任意两场考试各科均分对比（如期中 vs 期末），含逐科变化。"""
+    exams = (
+        db.query(models.Exam)
+        .filter(models.Exam.id.in_([exam_a, exam_b]), models.Exam.class_id == class_id)
+        .all()
+    )
+    by_id = {e.id: e for e in exams}
+    if exam_a not in by_id or exam_b not in by_id:
+        raise HTTPException(404, "考试不存在或不属于该班级")
+
+    rows = (
+        db.query(
+            models.Score.exam_id,
+            models.Score.subject_id,
+            models.Subject.name,
+            func.avg(models.Score.score),
+            models.Subject.color,
+            models.Subject.full_score,
+        )
+        .join(models.Subject, models.Subject.id == models.Score.subject_id)
+        .filter(
+            models.Score.exam_id.in_([exam_a, exam_b]),
+            models.Score.class_id == class_id,
+            models.Score.score.isnot(None),
+        )
+        .group_by(models.Score.exam_id, models.Score.subject_id, models.Subject.name,
+                  models.Subject.color, models.Subject.full_score)
+        .all()
+    )
+    # 保持科目稳定排序：以 a 卷科名为基准
+    a_avg: dict[str, float] = {}
+    b_avg: dict[str, float] = {}
+    colors: dict[str, str] = {}
+    fulls: dict[str, int] = {}
+    order: list[str] = []
+    for eid, _sid, sname, avg, color, full in rows:
+        colors.setdefault(sname, color)
+        fulls.setdefault(sname, full)
+        if eid == exam_a:
+            a_avg[sname] = round(float(avg), 1)
+            if sname not in order:
+                order.append(sname)
+    for eid, _sid, sname, avg, color, full in rows:
+        if eid == exam_b:
+            b_avg[sname] = round(float(avg), 1)
+            if sname not in order:
+                order.append(sname)
+
+    def out(d: dict, e: models.Exam):
+        return {
+            "id": e.id, "name": e.name, "date": str(e.date) if e.date else "",
+            "type": e.exam_type, "subjects": {k: d.get(k) for k in order},
+        }
+
+    ea, eb = by_id[exam_a], by_id[exam_b]
+    delta = {
+        k: (round(b_avg[k] - a_avg[k], 1) if k in a_avg and k in b_avg else None)
+        for k in order
+    }
+    return {
+        "a": out(a_avg, ea),
+        "b": out(b_avg, eb),
+        "subjects": [
+            {"name": k, "color": colors.get(k), "full": fulls.get(k)} for k in order
+        ],
+        "delta": delta,
     }

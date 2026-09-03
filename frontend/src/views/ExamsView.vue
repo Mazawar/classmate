@@ -7,6 +7,7 @@
       </div>
       <div style="display: flex; gap: 10px; flex-wrap: wrap">
         <n-select v-model:value="classFilter" placeholder="班级" :options="classOptions" clearable @update:value="loadExams" style="width: 140px" />
+        <n-select v-model:value="typeFilter" placeholder="全部类型" :options="typeOptions" clearable @update:value="loadExams" style="width: 130px" />
         <n-button type="primary" @click="openCreateExam">＋ 新建考试</n-button>
       </div>
     </div>
@@ -16,7 +17,10 @@
       <div v-for="e in exams" :key="e.id" class="exam-card pop-in" :class="{ active: currentExam && currentExam.id === e.id }">
         <div class="exam-info" @click="loadSummary(e)">
           <div class="exam-name">{{ e.name }}</div>
-          <div class="exam-meta">{{ e.date || '—' }} · {{ e.subject_count }} 科 · {{ e.student_count }} 人</div>
+          <div class="exam-meta">
+            <span class="exam-type-tag" :style="{ background: typeColor(e.exam_type) }">{{ typeLabel(e.exam_type) }}</span>
+            {{ e.date || '—' }} · {{ e.subject_count }} 科 · {{ e.student_count }} 人
+          </div>
         </div>
         <div class="exam-actions">
           <n-button size="tiny" secondary @click.stop="openScoreEntry(e)">录入成绩</n-button>
@@ -60,6 +64,9 @@
       <n-form label-placement="top">
         <n-form-item label="考试名称 *">
           <n-input v-model:value="examForm.name" placeholder="如：期中考试、第一次月考" />
+        </n-form-item>
+        <n-form-item label="考试类型 *">
+          <n-select v-model:value="examForm.exam_type" :options="typeOptions" placeholder="选择类型" />
         </n-form-item>
         <n-form-item label="考试日期">
           <n-date-picker v-model:value="examDateTs" type="date" clearable style="width: 100%" />
@@ -141,7 +148,27 @@ const saving = ref(false)
 const examModal = ref(false)
 const examEditing = ref(null)
 const examDateTs = ref(null)
-const examForm = reactive({ name: '', remark: '' })
+const examForm = reactive({ name: '', remark: '', exam_type: 'monthly' })
+
+// 考试类型
+const typeFilter = ref(null)
+const typeOptions = ref([])
+const TYPE_LABELS = {}
+const TYPE_COLORS = {}
+function typeLabel(t) {
+  return TYPE_LABELS[t] || '其他'
+}
+function typeColor(t) {
+  return TYPE_COLORS[t] || '#94a3b8'
+}
+async function loadTypes() {
+  const res = await http.get('/exams/types')
+  typeOptions.value = res.items.map((t) => ({ label: t.label, value: t.value }))
+  for (const t of res.items) {
+    TYPE_LABELS[t.value] = t.label
+    TYPE_COLORS[t.value] = t.color
+  }
+}
 
 // 成绩录入
 const scoreModal = ref(false)
@@ -169,7 +196,7 @@ async function loadExams() {
     exams.value = []
     return
   }
-  const res = await http.get('/exams', { params: { class_id: classFilter.value } })
+  const res = await http.get('/exams', { params: { class_id: classFilter.value, exam_type: typeFilter.value || undefined } })
   exams.value = res.items
 }
 function onClassChange() {
@@ -324,18 +351,22 @@ async function saveScores() {
 function openCreateExam() {
   examEditing.value = null
   examDateTs.value = null
-  Object.assign(examForm, { name: '', remark: '' })
+  Object.assign(examForm, { name: '', remark: '', exam_type: typeFilter.value || 'monthly' })
   examModal.value = true
 }
 function openEditExam(e) {
   examEditing.value = e
   examDateTs.value = e.date ? new Date(e.date + 'T00:00:00').getTime() : null
-  Object.assign(examForm, { name: e.name, remark: e.remark || '' })
+  Object.assign(examForm, { name: e.name, remark: e.remark || '', exam_type: e.exam_type || 'other' })
   examModal.value = true
 }
 async function saveExam() {
   if (!examForm.name) {
     message.warning('请填写考试名称')
+    return
+  }
+  if (!examForm.exam_type) {
+    message.warning('请选择考试类型')
     return
   }
   saving.value = true
@@ -376,6 +407,7 @@ async function removeExam(e) {
 }
 
 onMounted(() => {
+  loadTypes()
   loadClasses()
   loadSubjects()
   loadExams()
@@ -405,7 +437,15 @@ onMounted(() => {
 .exam-card.active { border-color: var(--c-primary); }
 .exam-info { cursor: pointer; }
 .exam-name { font-weight: 800; font-size: 18px; color: #4a4a55; }
-.exam-meta { color: #b39b86; font-size: 13px; margin-top: 2px; }
+.exam-meta { color: #b39b86; font-size: 13px; margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.exam-type-tag {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 2px 9px;
+  letter-spacing: 1px;
+}
 .exam-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .subj-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; margin-bottom: 8px; }
 .subj-stat {

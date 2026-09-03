@@ -140,12 +140,27 @@ class ScheduleItem(Base):
 
 
 class Exam(Base):
-    """考试。"""
+    """考试。exam_type 用于同类型间比较（周考只和周考比，期中和期末跨比）。"""
+
+    EXAM_TYPES = [
+        ("weekly", "周考", "#22d3ee"),
+        ("monthly", "月考", "#6c9ef5"),
+        ("unit", "单元自测", "#a3e635"),
+        ("subject", "单科考试", "#f472b6"),
+        ("unified", "统一考试", "#8b5cf6"),
+        ("midterm", "期中", "#ffb020"),
+        ("final", "期末", "#ff6f6f"),
+        ("mock", "模拟考", "#34d399"),
+        ("other", "其他", "#94a3b8"),
+    ]
+    TYPE_MAP = {v: label for v, label, _ in EXAM_TYPES}
+
     __tablename__ = "exams"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     class_id: Mapped[int] = mapped_column(ForeignKey("classes.id"), index=True)
     name: Mapped[str] = mapped_column(String(64), index=True)  # 如：期中、期末
+    exam_type: Mapped[Optional[str]] = mapped_column(String(24), default="other")
     date: Mapped[Optional[date]] = mapped_column(Date, default=None)
     remark: Mapped[Optional[str]] = mapped_column(Text, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

@@ -149,7 +149,7 @@ async function loadAll() {
   if (cls) {
     const eres = await http.get('/exams', { params: { class_id: cls.id, per_page: 100 } })
     if (eres.items && eres.items.length) {
-      const last = eres.items[eres.items.length - 1]
+      const last = eres.items[0]  // 列表按 id 倒序，首个即最新
       const cv = await http.get('/analytics/class-avg-compare', { params: { exam_id: last.id } })
       compareItems.value = cv.items
       compareName.value = `${cls.name} · ${cv.exam_name}`

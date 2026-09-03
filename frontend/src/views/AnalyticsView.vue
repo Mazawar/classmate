@@ -3,40 +3,69 @@
     <div class="page-head">
       <div>
         <h2 class="page-title">📊 数据分析</h2>
-        <p class="page-sub">用图表直观掌握教学与班级情况</p>
+        <p class="page-sub">同类型考试才可比：先选类型，再看趋势、对比与单科深钻</p>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <n-select v-model:value="classId" placeholder="全部班级/选择班级" :options="classOptions" clearable @update:value="onClassChange" style="width:180px" />
+        <n-select v-model:value="classId" placeholder="班级" :options="classOptions" style="width:150px" @update:value="reload" />
+        <n-select v-model:value="typeId" placeholder="全部类型" :options="typeOptions" clearable style="width:140px" @update:value="reload" />
       </div>
     </div>
 
-    <!-- 概览图表 -->
-    <div class="chart-grid">
-      <div class="chart-card">
-        <h4>🏫 各班级男女构成</h4>
-        <v-chart :option="genderOption" height="280px" />
+    <!-- 历次考试趋势（限所选类型） -->
+    <div class="chart-card wide pop-in">
+      <h4>📈 {{ typeLabel }}历次考试主科平均分趋势 <span class="tip">（{{ trendExams.length }} 场）</span></h4>
+      <v-chart :option="trendOption" height="300px" v-if="trendExams.length" />
+      <n-empty v-else description="该类型暂无考试" style="padding:30px 0" />
+    </div>
+
+    <!-- 单科深钻 -->
+    <div class="chart-card wide pop-in" style="margin-top:16px">
+      <div class="chart-toolbar">
+        <h4 style="flex:1">🔬 单科深钻 · {{ subjectName }}</h4>
+        <n-select v-model:value="subjectId" :options="subjectOptions" size="small" style="width:120px" @update:value="loadSubjectTrend" />
       </div>
-      <div class="chart-card">
-        <h4>🏅 {{ examTrendName }} 各科平均对比</h4>
-        <v-chart :option="avgCompareOption" height="280px" />
+      <v-chart :option="subjectOption" height="300px" v-if="subjectItems.length" />
+      <n-empty v-else description="暂无数据" style="padding:30px 0" />
+      <div class="dist-meta" v-if="subjectLatest">
+        <span>最近:{{ subjectLatest.name }}</span>
+        <span>均分 {{ subjectLatest.avg }}</span>
+        <span>最高 {{ subjectLatest.max }}</span>
+        <span>最低 {{ subjectLatest.min }}</span>
+        <span>及格率 {{ subjectLatest.pass_rate }}%</span>
       </div>
     </div>
 
-    <!-- 历次考试趋势 -->
-    <div class="chart-card wide">
-      <h4>📈 历次考试主科平均分趋势</h4>
-      <v-chart :option="examTrendOption" height="320px" />
+    <!-- 任意两场对比 -->
+    <div class="chart-card wide pop-in" style="margin-top:16px">
+      <div class="chart-toolbar">
+        <h4 style="flex:1">⚔️ 两场对比</h4>
+        <n-select v-model:value="examAId" :options="examOptions" size="small" style="width:170px" @update:value="loadCross" />
+        <span class="vs">vs</span>
+        <n-select v-model:value="examBId" :options="examOptions" size="small" style="width:170px" @update:value="loadCross" />
+      </div>
+      <v-chart :option="crossOption" height="300px" v-if="crossData" />
+      <n-empty v-else description="选择两场考试进行对比" style="padding:30px 0" />
+      <div class="delta-list" v-if="deltaRows.length">
+        <div v-for="d in deltaRows" :key="d.name" class="delta-row">
+          <span class="d-name" :style="{ background: d.color }">{{ d.name }}</span>
+          <span class="d-val">{{ d.a ?? '—' }} → {{ d.b ?? '—' }}</span>
+          <b :style="{ color: d.delta > 0 ? '#16a34a' : d.delta < 0 ? '#dc2626' : '#8a7a6b' }">
+            {{ d.delta === null ? '' : (d.delta > 0 ? '▲' : d.delta < 0 ? '▼' : '—') + Math.abs(d.delta ?? 0) }}
+          </b>
+        </div>
+      </div>
     </div>
 
-    <!-- 单科分布 + 前十 -->
-    <div class="chart-grid">
+    <!-- 分布 + 前十 -->
+    <div class="chart-grid" style="margin-top:16px">
       <div class="chart-card">
         <div class="chart-toolbar">
           <h4 style="flex:1">🎯 成绩分布</h4>
-          <n-select v-model:value="distExamId" :options="examOptions" size="small" style="width:130px" @update:value="onDistChange" />
-          <n-select v-model:value="distSubjectId" :options="subjectOptions" size="small" style="width:100px" @update:value="onDistChange" />
+          <n-select v-model:value="distExamId" :options="examOptions" size="small" style="width:150px" @update:value="loadDist" />
+          <n-select v-model:value="distSubjectId" :options="subjectOptions" size="small" style="width:100px" @update:value="loadDist" />
         </div>
-        <v-chart :option="distOption" height="280px" />
+        <v-chart :option="distOption" height="280px" v-if="distSeries.length" />
+        <n-empty v-else description="暂无数据" style="padding:30px 0" />
         <div class="dist-meta" v-if="distMeta">
           <span>平均 {{ distMeta.avg }}</span>
           <span>及格率 {{ distMeta.pass_rate }}%</span>
@@ -46,9 +75,10 @@
       <div class="chart-card">
         <div class="chart-toolbar">
           <h4 style="flex:1">🥇 班级总分前十</h4>
-          <n-select v-model:value="topExamId" :options="examOptions" size="small" style="width:130px" @update:value="loadTop" />
+          <n-select v-model:value="topExamId" :options="examOptions" size="small" style="width:150px" @update:value="loadTop" />
         </div>
-        <v-chart :option="topOption" height="280px" />
+        <v-chart :option="topOption" height="280px" v-if="topSeries.length" />
+        <n-empty v-else description="暂无数据" style="padding:30px 0" />
       </div>
     </div>
   </div>
@@ -63,193 +93,216 @@ import VChart, { CARTOON_COLORS, baseTooltip } from '../components/VChart'
 const message = useMessage()
 const classId = ref(null)
 const classOptions = ref([])
-const overview = ref([])
+const typeId = ref(null)
+const typeOptions = ref([])
+const TYPE_MAP = {}
 
-const examOptions = ref([])
+const examOptions = ref([])   // 该班(+类型)考试，按日期升序
 const subjectOptions = ref([])
+const subjectId = ref(null)
+
+const trendExams = ref([])
+const trendSeries = ref([])
+const subjectItems = ref([])
+const subjectName = ref('')
+const subjectFull = ref(100)
+const crossData = ref(null)
+const examAId = ref(null)
+const examBId = ref(null)
 const distExamId = ref(null)
 const distSubjectId = ref(null)
 const topExamId = ref(null)
-const distMeta = ref(null)
-
-const allExamsForClass = ref([])
-
-const genderSeries = ref([])
-const avgCompareSeries = ref([])
-const examTrendSeries = ref([])
-const trendExams = ref([])
 const distSeries = ref([])
+const distMeta = ref(null)
 const topSeries = ref([])
 
-async function loadClassesAndExams() {
-  const cres = await http.get('/classes')
+const typeLabel = computed(() => (typeId.value && TYPE_MAP[typeId.value]) ? TYPE_MAP[typeId.value] : '')
+const subjectLatest = computed(() => subjectItems.value.length ? subjectItems.value[subjectItems.value.length - 1] : null)
+
+const deltaRows = computed(() => {
+  if (!crossData.value) return []
+  const { a, b, delta } = crossData.value
+  return crossData.value.subjects.map((s) => ({
+    name: s.name,
+    color: s.color,
+    a: a.subjects[s.name],
+    b: b.subjects[s.name],
+    delta: delta[s.name],
+  }))
+})
+
+async function loadClassesAndTypes() {
+  const [cres, tres] = await Promise.all([http.get('/classes'), http.get('/exams/types')])
   classOptions.value = cres.items.map((c) => ({ label: c.name, value: c.id }))
+  typeOptions.value = tres.items.map((t) => ({ label: t.label, value: t.value }))
+  for (const t of tres.items) TYPE_MAP[t.value] = t.label
+  if (classOptions.value.length) classId.value = classOptions.value[0].id
 }
 
-async function ensureExamsForClass() {
-  if (!classId.value) {
-    allExamsForClass.value = []
-    return
-  }
-  const eres = await http.get('/exams', { params: { class_id: classId.value, per_page: 100 } })
-  allExamsForClass.value = eres.items
-  examOptions.value = eres.items.map((e) => ({ label: e.name, value: e.id }))
+async function reload() {
+  if (!classId.value) return
+  // 该班(+类型)的考试，按日期升序
+  const eres = await http.get('/exams', {
+    params: { class_id: classId.value, exam_type: typeId.value || undefined, per_page: 200 },
+  })
+  const items = [...eres.items].sort((x, y) => ((x.date || '9999') < (y.date || '9999') ? -1 : 1))
+  examOptions.value = items.map((e) => ({ label: `${e.name} ${e.date || ''}`, value: e.id }))
+
   const sres = await http.get('/subjects')
   subjectOptions.value = sres.items.map((s) => ({ label: s.name, value: s.id }))
-  if (!distExamId.value && eres.items.length) distExamId.value = eres.items[0].id
-  if (!topExamId.value && eres.items.length) topExamId.value = eres.items[0].id
+  if (!subjectId.value && sres.items.length) subjectId.value = sres.items[0].id
   if (!distSubjectId.value && sres.items.length) distSubjectId.value = sres.items[0].id
-  return eres
+
+  // 默认：分布/前十取最近一场；对比取最近两场
+  const lastId = items.length ? items[items.length - 1].id : null
+  distExamId.value = lastId
+  topExamId.value = lastId
+  examAId.value = items.length > 1 ? items[items.length - 2].id : null
+  examBId.value = lastId
+
+  await Promise.all([loadTrend(), loadSubjectTrend(), loadCross(), loadDist(), loadTop()])
 }
 
-async function allLoad() {
-  await ensureExamsForClass()
-  const o = await http.get('/analytics/overview')
-  overview.value = o.classes
-  genderSeries.value = o.classes
+async function loadTrend() {
+  const r = await http.get('/analytics/exam-trend', {
+    params: { class_id: classId.value, exam_type: typeId.value || undefined },
+  })
+  trendExams.value = r.exams
+  trendSeries.value = r.series
+}
 
-  if (classId.value) {
-    const trend = await http.get('/analytics/exam-trend', { params: { class_id: classId.value } })
-    trendExams.value = trend.exams
-    examTrendSeries.value = trend.series
-    const last = allExamsForClass.value.length ? allExamsForClass.value[allExamsForClass.value.length - 1].id : null
-    if (last) await loadCompare(last)
+async function loadSubjectTrend() {
+  if (!subjectId.value) return
+  const r = await http.get('/analytics/subject-trend', {
+    params: { class_id: classId.value, subject_id: subjectId.value, exam_type: typeId.value || undefined },
+  })
+  subjectName.value = r.subject
+  subjectFull.value = r.full
+  subjectItems.value = r.items
+}
+
+async function loadCross() {
+  if (!examAId.value || !examBId.value) {
+    crossData.value = null
+    return
   }
-  await loadDist()
-  await loadTop()
-}
-
-async function onClassChange() {
-  await allLoad()
-}
-
-async function loadCompare(examId) {
-  const r = await http.get('/analytics/class-avg-compare', { params: { exam_id: examId } })
-  avgCompareSeries.value = r.items
-  examTrendName.value = r.exam_name
-}
-
-async function onDistChange() {
-  await loadDist()
+  try {
+    crossData.value = await http.get('/analytics/cross-compare', {
+      params: { class_id: classId.value, exam_a: examAId.value, exam_b: examBId.value },
+    })
+  } catch (e) {
+    crossData.value = null
+    message.error(e.message)
+  }
 }
 
 async function loadDist() {
   if (!distExamId.value || !distSubjectId.value) return
-  const r = await http.get('/analytics/score-distribution', { params: { exam_id: distExamId.value, subject_id: distSubjectId.value } })
+  const r = await http.get('/analytics/score-distribution', {
+    params: { exam_id: distExamId.value, subject_id: distSubjectId.value },
+  })
   distSeries.value = r.distribution
   distMeta.value = { avg: r.avg, pass_rate: r.pass_rate, count: r.count }
 }
 
 async function loadTop() {
   if (!topExamId.value) return
-  const r = await http.get('/analytics/top-students', { params: { class_id: classId.value, exam_id: topExamId.value, limit: 10 } })
+  const r = await http.get('/analytics/top-students', {
+    params: { class_id: classId.value, exam_id: topExamId.value, limit: 10 },
+  })
   topSeries.value = r.items
 }
 
-const examTrendName = ref('最近一次')
-
-const genderOption = computed(() => ({
+// ---------- 图表配置 ----------
+const trendOption = computed(() => ({
   color: CARTOON_COLORS,
-  tooltip: baseTooltip({ axisPointer: { type: 'shadow' } }),
-  legend: { data: ['男生', '女生'], bottom: 0, textStyle: { color: '#8a7a6b' } },
-  grid: { top: 20, left: 30, right: 20, bottom: 50 },
-  xAxis: { type: 'category', data: genderSeries.value.map((c) => c.name), axisLabel: { color: '#8a7a6b' } },
-  yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#8a7a6b' } },
-  series: [
-    { name: '男生', type: 'bar', data: genderSeries.value.map((c) => c.male), barWidth: 18, itemStyle: { borderRadius: [6,6,0,0], color: '#6c9ef5' } },
-    { name: '女生', type: 'bar', data: genderSeries.value.map((c) => c.female), barWidth: 18, itemStyle: { borderRadius: [6,6,0,0], color: '#ff8fab' } },
-  ],
-}))
-
-const avgCompareOption = computed(() => {
-  const names = avgCompareSeries.value.map((x) => x.name)
-  const avgs = avgCompareSeries.value.map((x) => x.avg)
-  return {
-    color: CARTOON_COLORS,
-    tooltip: baseTooltip({ axisPointer: { type: 'shadow' }, valueFormatter: (v) => `${v} 分` }),
-    grid: { top: 20, left: 30, right: 20, bottom: 30 },
-    xAxis: { type: 'category', data: names, axisLabel: { color: '#8a7a6b' } },
-    yAxis: { type: 'value', axisLabel: { color: '#8a7a6b' } },
-    series: [{
-      name: '平均分',
-      type: 'bar',
-      data: avgs,
-      barMaxWidth: 40,
-      label: { show: true, position: 'top', color: '#8a7a6b', fontWeight: 700 },
-      itemStyle: {
-        borderRadius: [8, 8, 0, 0],
-        color: (p) => avgCompareSeries.value[p.dataIndex]?.color || '#6c9ef5',
-      },
-    }],
-  }
-})
-
-const examTrendOption = computed(() => ({
-  color: [CARTOON_COLORS[0], CARTOON_COLORS[2], CARTOON_COLORS[3], CARTOON_COLORS[4]],
   tooltip: baseTooltip({ valueFormatter: (v) => `${v} 分` }),
   legend: { bottom: 0, textStyle: { color: '#8a7a6b' } },
-  grid: { top: 30, left: 40, right: 20, bottom: 40 },
+  grid: { top: 20, left: 40, right: 20, bottom: 46 },
   xAxis: { type: 'category', data: trendExams.value.map((e) => e.name), axisLabel: { color: '#8a7a6b' } },
   yAxis: { type: 'value', axisLabel: { color: '#8a7a6b' } },
-  series: examTrendSeries.value.map((s) => ({
-    name: s.name,
-    type: 'line',
-    data: s.values,
-    smooth: true,
-    connectNulls: true,
-    symbolSize: 8,
+  series: trendSeries.value.map((s) => ({
+    name: s.name, type: 'line', data: s.values, smooth: true, symbolSize: 7,
     lineStyle: { width: 3 },
-    label: { show: true, fontSize: 12, color: '#c0aa94' },
   })),
 }))
 
-const distOption = computed(() => {
-  const names = distSeries.value.map((d) => d.range)
-  const vals = distSeries.value.map((d) => d.count)
+const subjectOption = computed(() => {
+  const it = subjectItems.value
   return {
-    tooltip: baseTooltip({ axisPointer: { type: 'shadow' } }),
-    grid: { top: 15, left: 30, right: 15, bottom: 30 },
-    xAxis: { type: 'category', data: names, axisLabel: { rotate: 30, color: '#8a7a6b', fontSize: 11 } },
-    yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#8a7a6b' } },
-    series: [{
-      name: '人数',
-      type: 'bar',
-      data: vals,
-      barMaxWidth: 50,
-      itemStyle: {
-        borderRadius: [6, 6, 0, 0],
-        color: (p) => {
-          const i = p.dataIndex
-          return i < 2 ? '#ff6f6f' : i >= 4 ? '#34d399' : '#ffd166'
-        },
-      },
-    }],
+    color: ['#ffb020', '#6c9ef5', '#22d3ee', '#ff8fab'],
+    tooltip: baseTooltip({ trigger: 'axis' }),
+    legend: { bottom: 0, textStyle: { color: '#8a7a6b' } },
+    grid: { top: 20, left: 40, right: 44, bottom: 46 },
+    xAxis: { type: 'category', data: it.map((i) => i.name), axisLabel: { color: '#8a7a6b' } },
+    yAxis: [
+      { type: 'value', name: '分', axisLabel: { color: '#8a7a6b' } },
+      { type: 'value', name: '及格率%', min: 0, max: 100, axisLabel: { color: '#8a7a6b' }, splitLine: { show: false } },
+    ],
+    series: [
+      { name: '最高', type: 'line', data: it.map((i) => i.max), smooth: true, lineStyle: { type: 'dashed', width: 2 } },
+      { name: '平均', type: 'line', data: it.map((i) => i.avg), smooth: true, symbolSize: 8, lineStyle: { width: 4 },
+        areaStyle: { opacity: 0.08 } },
+      { name: '最低', type: 'line', data: it.map((i) => i.min), smooth: true, lineStyle: { type: 'dashed', width: 2 } },
+      { name: '及格率', type: 'line', yAxisIndex: 1, data: it.map((i) => i.pass_rate), smooth: true,
+        lineStyle: { width: 2, type: 'dotted' }, symbol: 'none' },
+    ],
   }
 })
 
-const topOption = computed(() => {
-  const revItems = [...topSeries.value].reverse() || []
+const crossOption = computed(() => {
+  const d = crossData.value
+  if (!d) return {}
+  const names = d.subjects.map((s) => s.name)
   return {
+    color: ['#c0aa94', '#6c9ef5'],
     tooltip: baseTooltip({ axisPointer: { type: 'shadow' }, valueFormatter: (v) => `${v} 分` }),
+    legend: { bottom: 0, textStyle: { color: '#8a7a6b' } },
+    grid: { top: 20, left: 40, right: 20, bottom: 46 },
+    xAxis: { type: 'category', data: names, axisLabel: { color: '#8a7a6b' } },
+    yAxis: { type: 'value', axisLabel: { color: '#8a7a6b' } },
+    series: [
+      { name: d.a.name, type: 'bar', data: names.map((n) => d.a.subjects[n]), barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0] } },
+      { name: d.b.name, type: 'bar', data: names.map((n) => d.b.subjects[n]), barMaxWidth: 18, itemStyle: { borderRadius: [6, 6, 0, 0] } },
+    ],
+  }
+})
+
+const distOption = computed(() => ({
+  tooltip: baseTooltip({ axisPointer: { type: 'shadow' } }),
+  grid: { top: 15, left: 30, right: 15, bottom: 30 },
+  xAxis: { type: 'category', data: distSeries.value.map((d) => d.range), axisLabel: { rotate: 30, color: '#8a7a6b', fontSize: 11 } },
+  yAxis: { type: 'value', minInterval: 1, axisLabel: { color: '#8a7a6b' } },
+  series: [{
+    name: '人数', type: 'bar', data: distSeries.value.map((d) => d.count), barMaxWidth: 50,
+    itemStyle: {
+      borderRadius: [6, 6, 0, 0],
+      color: (p) => (p.dataIndex < 2 ? '#ff6f6f' : p.dataIndex >= 4 ? '#34d399' : '#ffd166'),
+    },
+  }],
+}))
+
+const topOption = computed(() => {
+  const rev = [...topSeries.value].reverse()
+  return {
+    tooltip: baseTooltip({ valueFormatter: (v) => `${v} 分` }),
     grid: { top: 12, left: 40, right: 50, bottom: 20 },
     xAxis: { type: 'value', axisLabel: { color: '#8a7a6b' } },
-    yAxis: { type: 'category', data: revItems.map((s, _i) => s.name), axisLabel: { color: '#8a7a6b', fontWeight: 700 }, inverse: true },
+    yAxis: { type: 'category', data: rev.map((s) => s.name), axisLabel: { color: '#8a7a6b', fontWeight: 700 } },
     series: [{
-      name: '总分',
-      type: 'bar',
-      data: revItems.map((s) => s.total),
-      barMaxWidth: 22,
+      name: '总分', type: 'bar', data: rev.map((s) => s.total), barMaxWidth: 22,
       label: { show: true, position: 'right', color: '#8a7a6b', fontWeight: 700 },
-      itemStyle: { borderRadius: [0, 8, 8, 0], color: (p) => (p.dataIndex >= (revItems.length - 3) ? '#ffb020' : '#6c9ef5') },
+      itemStyle: { borderRadius: [0, 8, 8, 0], color: (p) => (p.dataIndex >= rev.length - 3 ? '#ffb020' : '#6c9ef5') },
     }],
   }
 })
 
 onMounted(async () => {
-  await loadClassesAndExams()
-  if (classOptions.value.length) {
-    classId.value = classOptions.value[0].value
-    await allLoad()
+  try {
+    await loadClassesAndTypes()
+    await reload()
+  } catch (e) {
+    message.error(e.message)
   }
 })
 </script>
@@ -263,17 +316,28 @@ onMounted(async () => {
   flex-wrap: wrap;
   gap: 10px;
 }
-.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .chart-card {
   background: #fff; border-radius: var(--radius-lg); padding: 16px 18px;
   border: 3px solid #fff; box-shadow: 0 6px 18px var(--c-shadow);
 }
 .chart-card h4 { margin: 0 0 10px; font-size: 15px; color: #4a4a55; }
-.chart-card.wide { margin-bottom: 16px; }
-.chart-card.wide h4 { margin-left: 6px; }
-.dist-meta { display: flex; gap: 16px; justify-content: center; color: #8a7a6b; font-size: 13px; margin-top: 4px; }
-.chart-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; align-items: flex-start; }
+.chart-card.wide h4 { margin-left: 2px; }
+.tip { color: #b39b86; font-size: 12px; font-weight: 400; }
+.vs { color: #ff6f6f; font-weight: 800; font-size: 13px; }
+.chart-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
 .chart-toolbar h4 { margin: 4px 0 0; font-size: 15px; }
+.dist-meta { display: flex; gap: 16px; justify-content: center; color: #8a7a6b; font-size: 13px; margin-top: 4px; flex-wrap: wrap; }
+.delta-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px; margin-top: 10px;
+}
+.delta-row {
+  display: flex; align-items: center; gap: 8px;
+  background: #fbf6f1; border-radius: 10px; padding: 6px 10px; font-size: 13px;
+}
+.d-name { color: #fff; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; }
+.d-val { flex: 1; color: #6b5d50; font-weight: 600; }
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 @media (max-width: 768px) {
   .chart-grid { grid-template-columns: 1fr; }
 }

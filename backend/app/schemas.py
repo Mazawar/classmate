@@ -216,12 +216,14 @@ class ScheduleOut(BaseModel):
 class ExamCreate(BaseModel):
     class_id: int
     name: str = Field(min_length=1, max_length=64)
+    exam_type: str = Field(default="monthly", max_length=24)
     date: Optional[_dt.date] = None
     remark: Optional[str] = None
 
 
 class ExamUpdate(BaseModel):
     name: Optional[str] = None
+    exam_type: Optional[str] = None
     date: Optional[_dt.date] = None
     remark: Optional[str] = None
 
@@ -230,6 +232,7 @@ class ExamOut(BaseModel):
     id: int
     class_id: int
     name: str
+    exam_type: Optional[str] = "other"
     date: Optional[_dt.date] = None
     remark: Optional[str] = None
     created_at: datetime

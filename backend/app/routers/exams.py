@@ -34,15 +34,26 @@ def _exam_to_out(e: models.Exam) -> ExamOut:
     return out
 
 
+@router.get("/types")
+def exam_types(
+    _: models.User = Depends(get_current_user),
+):
+    """考试类型枚举（含展示色），前端下拉/徽标共用。"""
+    return {"items": [{"value": v, "label": label, "color": color} for v, label, color in models.Exam.EXAM_TYPES]}
+
+
 @router.get("", response_model=PageResult)
 def list_exams(
     class_id: Optional[int] = None,
+    exam_type: Optional[str] = None,
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
     query = db.query(models.Exam)
     if class_id:
         query = query.filter(models.Exam.class_id == class_id)
+    if exam_type:
+        query = query.filter(models.Exam.exam_type == exam_type)
     items = query.order_by(desc(models.Exam.id)).all()
     return PageResult(total=len(items), items=[_exam_to_out(e) for e in items])
 
@@ -53,6 +64,8 @@ def create_exam(
     db: Session = Depends(get_db),
     _: models.User = Depends(get_current_user),
 ):
+    if payload.exam_type not in models.Exam.TYPE_MAP:
+        raise HTTPException(400, "非法的考试类型")
     exam = models.Exam(**payload.model_dump())
     db.add(exam)
     db.commit()
@@ -71,6 +84,8 @@ def update_exam(
     if not exam:
         raise HTTPException(status_code=404, detail="考试不存在")
     data = payload.model_dump(exclude_unset=True)
+    if "exam_type" in data and data["exam_type"] not in models.Exam.TYPE_MAP:
+        raise HTTPException(400, "非法的考试类型")
     for key, value in data.items():
         setattr(exam, key, value)
     db.commit()
