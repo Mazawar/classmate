@@ -34,15 +34,16 @@
     </div>
 
     <!-- 表格 -->
-    <n-data-table
-      :columns="columns"
-      :data="students"
-      :loading="loading"
-      :pagination="pagination"
-      :bordered="false"
-      remote
-      class="pop-in"
-    />
+    <div class="tbl-scroll pop-in">
+      <n-data-table
+        :columns="columns"
+        :data="students"
+        :loading="loading"
+        :pagination="pagination"
+        :bordered="false"
+        remote
+      />
+    </div>
 
     <!-- 新增/编辑弹窗 -->
     <n-modal v-model:show="modalShow" preset="card" :title="editing ? '编辑学生' : '新增学生'" style="max-width: 500px">

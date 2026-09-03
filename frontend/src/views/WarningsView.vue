@@ -57,7 +57,9 @@
     <template v-if="data.attendance_alerts?.length">
       <h3 class="section-title">📅 近 {{ data.window_days }} 天考勤异常</h3>
       <div class="att-card">
-        <n-data-table :columns="attColumns" :data="data.attendance_alerts" :bordered="false" :pagination="false" size="small" />
+        <div class="tbl-scroll">
+          <n-data-table :columns="attColumns" :data="data.attendance_alerts" :bordered="false" :pagination="false" size="small" />
+        </div>
       </div>
     </template>
 

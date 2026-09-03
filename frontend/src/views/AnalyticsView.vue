@@ -255,6 +255,14 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
 .chart-card {
   background: #fff; border-radius: var(--radius-lg); padding: 16px 18px;

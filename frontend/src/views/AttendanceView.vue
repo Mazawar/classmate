@@ -41,15 +41,17 @@
 
     <!-- 打卡表格 -->
     <div class="att-table cartoon-card pop-in">
-      <n-data-table
-        :columns="attColumns"
-        :data="day.records"
-        :row-key="(r) => r.student_id"
-        v-model:checked-row-keys="checkedKeys"
-        :bordered="false"
-        :pagination="false"
-        size="small"
-      />
+      <div class="tbl-scroll">
+        <n-data-table
+          :columns="attColumns"
+          :data="day.records"
+          :row-key="(r) => r.student_id"
+          v-model:checked-row-keys="checkedKeys"
+          :bordered="false"
+          :pagination="false"
+          size="small"
+        />
+      </div>
       <div class="att-footer">
         <n-button type="primary" :loading="saving" @click="saveDay">💾 保存当日考勤</n-button>
         <span class="att-tip">共 {{ day.total }} 人 · 未标记状态将视为「出勤」</span>

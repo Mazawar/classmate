@@ -43,14 +43,16 @@
 
       <!-- 排名表 -->
       <h3 class="section-title">🏆 成绩排名（{{ summary.exam_name }}）</h3>
-      <n-data-table
-        :columns="rankColumns"
-        :data="summary.rows"
-        :bordered="false"
-        :pagination="false"
-        :scroll-x="600"
-        size="small"
-      />
+      <div class="tbl-scroll">
+        <n-data-table
+          :columns="rankColumns"
+          :data="summary.rows"
+          :bordered="false"
+          :pagination="false"
+          :scroll-x="600"
+          size="small"
+        />
+      </div>
     </template>
 
     <!-- 考试 CRUD 弹窗 -->
@@ -96,14 +98,16 @@
             <n-button size="small" type="primary" @click="parsePaste">📋 解析并填充到表格</n-button>
           </div>
         </div>
-        <n-data-table
-          :columns="scoreCols"
-          :data="scoreRows"
-          :bordered="false"
-          :pagination="false"
-          :scroll-x="600"
-          size="small"
-        />
+        <div class="tbl-scroll" style="max-height: 60vh">
+          <n-data-table
+            :columns="scoreCols"
+            :data="scoreRows"
+            :bordered="false"
+            :pagination="false"
+            :scroll-x="600"
+            size="small"
+          />
+        </div>
       </div>
       <template #footer>
         <div style="display: flex; justify-content: space-between; gap: 10px">

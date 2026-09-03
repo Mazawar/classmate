@@ -14,14 +14,15 @@
       </div>
     </div>
 
-    <n-data-table
-      :columns="columns"
-      :data="students"
-      :loading="loading"
-      :bordered="false"
-      :pagination="pagination"
-      class="pop-in"
-    />
+    <div class="tbl-scroll pop-in">
+      <n-data-table
+        :columns="columns"
+        :data="students"
+        :loading="loading"
+        :bordered="false"
+        :pagination="pagination"
+      />
+    </div>
   </div>
 </template>
 
